@@ -1,0 +1,370 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Command from '../components/Command.astro';
+import CodeBlock from '../components/CodeBlock.astro';
+import SyncPanel from '../components/SyncPanel.astro';
+import FlowDiagram from '../components/FlowDiagram.astro';
+import StatusLight from '../components/StatusLight.astro';
+import { STATUSES, STATUS_ORDER } from '../lib/statuses';
+import { INSTALL_COMMAND, REPO_URL, SITE_NAME, SITE_URL, SUMMARY } from '../lib/site';
+
+const problems = [
+  ['Skills copied by hand drift.', 'Versions diverge, and a fix never reaches everyone.'],
+  ['Every agent reads its own folder.', 'A team on five agents maintains five copies, or none.'],
+  ['Nobody knows who has what.', 'No way to require the security review skill, or to pull a bad one.'],
+];
+
+const steps = [
+  {
+    who: 'Administrator',
+    title: 'Create the registry',
+    text: 'One Git repository with the Claude Code marketplace layout and a skillcrew.yaml. Push it to your Git host.',
+    code: `$ skillcrew registry init --org acme
+Created a new Skillcrew registry.
+  + .claude-plugin/marketplace.json
+  + .github/workflows/validate.yml
+  + plugins/example/skills/hello-world/SKILL.md
+  + skillcrew.yaml`,
+  },
+  {
+    who: 'Developer, once',
+    title: 'Join with one command',
+    text: 'Clones the registry, adds a session-start hook to each agent it finds and an hourly timer, then syncs.',
+    code: `$ skillcrew init github.com/acme/skills --team backend
+Joined organization acme (registry https://github.com/acme/skills.git, branch main).
+  ✓ claude-code: session-start hook installed
+  ✓ codex: session-start hook installed
+  ✓ fallback timer installed (every 1h0m0s)
+Synced registry 7f396e1a9c2d:
+  + review (installed)`,
+  },
+  {
+    who: 'Everyone, from then on',
+    title: 'Merge a pull request. Every machine gets it.',
+    text: 'The next agent session, or the timer within the hour, runs the sync. Nobody types anything.',
+    code: `$ skillcrew sync      # hooks and the timer run it
+Synced registry 9b1c4e2a7d30:
+  ~ review (updated)
+  + conventional-commits (installed)
+  - risky (removed: blocked by your organization)`,
+  },
+];
+
+const governanceYaml = `org: acme
+default: available            # skills not listed below
+
+skills:
+  security:review: required
+  git:commit-msgs: recommended
+  quality:old-linter:
+    status: deprecated
+    replaced_by: quality:lint-rules
+  misc:risky: blocked         # kill switch
+
+teams:
+  backend:
+    skills:
+      data:db-migrations: required`;
+
+const agents: { name: string; status: 'required' | 'recommended' | 'available'; result: string; detail: string }[] = [
+  { name: 'Claude Code', status: 'required', result: 'verified', detail: 'skills and session-start hook' },
+  { name: 'OpenCode', status: 'required', result: 'verified', detail: 'skills, synced by the hourly timer' },
+  { name: 'Codex CLI', status: 'recommended', result: 'skills listed', detail: 'hook not verified yet; trust it once with /hooks' },
+  { name: 'Gemini CLI', status: 'recommended', result: 'skills listed', detail: 'hook not tested yet' },
+  { name: 'GitHub Copilot', status: 'available', result: 'not tested yet', detail: 'reads ~/.agents/skills' },
+  { name: 'Cursor', status: 'available', result: 'not tested yet', detail: 'reads ~/.agents/skills' },
+];
+
+const safety = [
+  ['The registry is the root of trust.', 'Every change is a reviewed pull request, checked by skillcrew validate in CI.'],
+  ['Pins cannot be hijacked.', 'sha is a full commit id, ref is a tag; neither ever resolves to a branch.'],
+  ['Skillcrew executes nothing from the registry.', 'It copies files, atomically, and keeps working offline.'],
+  ['No secrets stored.', 'Git uses your existing SSH keys and credential helpers; URLs with passwords are refused.'],
+];
+
+const faq = [
+  {
+    q: 'What happens to my local edits to a team skill?',
+    a: 'They are backed up in ~/.skillcrew/backups/<skill>/ (last 5 versions) and the team version is restored. skillcrew propose <skill> turns them into a pull request.',
+  },
+  {
+    q: 'What if I already have a personal skill with the same name?',
+    a: 'It is backed up (and never pruned) and replaced by the team skill; skillcrew uninstall puts it back. Rename yours to keep both.',
+  },
+  {
+    q: 'Can a skill be pinned?',
+    a: 'Yes: ref (a tag) or sha (a full commit id). Otherwise skills follow the registry branch.',
+  },
+  {
+    q: 'What about project-specific skills?',
+    a: 'Commit them in the project (.agents/skills/, .claude/skills/): Git already distributes them. Skillcrew manages user-level skills.',
+  },
+  {
+    q: 'How do I uninstall?',
+    a: 'skillcrew uninstall lists what it removes, then removes hooks, the timer, team skills and ~/.skillcrew. Personal skills that team skills replaced are restored when their name is free, and backups of your local changes are kept. Then brew uninstall skillcrew or delete the binary.',
+  },
+];
+
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': ['SoftwareApplication', 'SoftwareSourceCode'],
+    name: SITE_NAME,
+    description: SUMMARY,
+    url: `${SITE_URL}/`,
+    applicationCategory: 'DeveloperApplication',
+    operatingSystem: 'macOS, Linux',
+    license: 'https://opensource.org/licenses/MIT',
+    codeRepository: REPO_URL,
+    programmingLanguage: 'Go',
+    downloadUrl: `${REPO_URL}/releases`,
+    image: `${SITE_URL}/og/index.png`,
+    offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+    author: { '@type': 'Person', name: 'YoanDev', url: 'https://yoandev.co' },
+    creator: { '@type': 'Person', name: 'YoanDev', url: 'https://yoandev.co' },
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faq.map(({ q, a }) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })),
+  },
+];
+
+/** Render `code`-like fragments of plain text answers in mono. */
+const codeLike = /(skillcrew [a-z]+(?: <skill>)?|~\/[\w./<>-]+|\.agents\/skills\/|\.claude\/skills\/|\bref\b|\bsha\b|brew uninstall skillcrew)/g;
+function parts(text: string): { code: boolean; text: string }[] {
+  return text.split(codeLike).map((t, i) => ({ code: i % 2 === 1, text: t }));
+}
+---
+
+<BaseLayout
+  title="Skillcrew: one skill registry for every AI coding agent of your team"
+  description={SUMMARY}
+  path="/"
+  ogImage="/og/index.png"
+  jsonLd={jsonLd}
+  current="home"
+>
+  <main id="main" tabindex="-1" class="focus:outline-none">
+    <!-- Hero -->
+    <section class="grid-texture border-b border-line" aria-labelledby="hero-title">
+      <div class="wrap pt-12 pb-16 text-center sm:pt-16 lg:pb-20">
+        <h1 id="hero-title" class="hero-title display mx-auto">
+          <span class="block">Your team's AI skills.</span>
+          <span class="block">Every agent.</span>
+          <span class="block text-amber">Always in sync.</span>
+        </h1>
+        <p class="mx-auto mt-5 max-w-[36rem] text-lg leading-relaxed text-muted sm:text-xl">
+          One Git repository for your whole team. Skills stay up to date in every agent, with no action from developers.
+        </p>
+        <div class="mx-auto mt-7 flex max-w-[44rem] flex-col items-center gap-4 sm:flex-row sm:gap-6">
+          <Command command={INSTALL_COMMAND} class="w-full text-left sm:flex-1" />
+          <a href="/docs/getting-started/install/" class="shrink-0 font-mono text-sm text-amber underline-offset-4 hover:underline">Read the docs →</a>
+        </div>
+        <div class="mt-8 sm:mt-10">
+          <SyncPanel />
+        </div>
+      </div>
+    </section>
+
+    <!-- The problem -->
+    <section class="border-b border-line" aria-labelledby="problem-title">
+      <div class="wrap py-20 sm:py-24">
+        <header class="section-head grid-texture grid-texture-soft">
+          <p class="label">01 / The problem</p>
+          <h2 id="problem-title" class="heading mt-3 max-w-2xl text-3xl sm:text-4xl">
+            Agent Skills work everywhere. Keeping a team's copies straight does not.
+          </h2>
+        </header>
+        <ol class="mt-12 grid grid-cols-1 gap-4 md:grid-cols-3">
+          {
+            problems.map(([head, tail], i) => (
+              <li class="panel p-6">
+                <span class="font-mono text-xs text-muted">0{i + 1}</span>
+                <p class="heading mt-4 text-lg">{head}</p>
+                <p class="mt-2 text-muted">{tail}</p>
+              </li>
+            ))
+          }
+        </ol>
+      </div>
+    </section>
+
+    <!-- How it works -->
+    <section class="border-b border-line" aria-labelledby="how-title">
+      <div class="wrap py-20 sm:py-24">
+        <header class="section-head grid-texture grid-texture-soft">
+          <p class="label">02 / How it works</p>
+          <h2 id="how-title" class="heading mt-3 max-w-2xl text-3xl sm:text-4xl">One repository in, every agent out.</h2>
+        </header>
+        <div class="mt-12 grid grid-cols-1 gap-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,31rem)] lg:gap-16">
+          <ol class="min-w-0 space-y-12">
+            {
+              steps.map((s, i) => (
+                <li class="grid grid-cols-1 gap-x-5 sm:grid-cols-[2.5rem_minmax(0,1fr)]">
+                  <span class="font-mono text-sm text-amber" aria-hidden="true">
+                    0{i + 1}
+                  </span>
+                  <div class="min-w-0">
+                    <p class="label">{s.who}</p>
+                    <h3 class="heading mt-1.5 text-xl">
+                      <span class="sr-only">Step {i + 1}: </span>
+                      {s.title}
+                    </h3>
+                    <p class="mt-2 max-w-prose text-muted">{s.text}</p>
+                    <CodeBlock code={s.code} lang="console" />
+                  </div>
+                </li>
+              ))
+            }
+          </ol>
+          <div class="min-w-0 lg:sticky lg:top-24 lg:self-start">
+            <div class="panel p-4 sm:p-6">
+              <FlowDiagram />
+            </div>
+            <p class="mt-4 text-sm text-muted">
+              Syncs are debounced and atomic. Offline, agents keep the last fetched skills.{' '}
+              <a class="link" href="/docs/concepts/registry/#from-merge-to-machines">How syncs work</a>
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Governance -->
+    <section class="border-b border-line" aria-labelledby="gov-title">
+      <div class="wrap grid grid-cols-1 gap-12 py-20 sm:py-24 lg:grid-cols-[minmax(0,1fr)_minmax(0,31rem)] lg:gap-16">
+        <div class="min-w-0">
+          <header class="section-head grid-texture grid-texture-soft">
+            <p class="label">03 / Governance</p>
+            <h2 id="gov-title" class="heading mt-3 max-w-xl text-3xl sm:text-4xl">Five statuses, per organization and per team.</h2>
+          </header>
+          <p class="mt-4 max-w-prose text-muted">
+            A team can harden a status, never soften the organization's. Developers turn off what is only recommended; nobody
+            installs what is blocked.
+          </p>
+          <dl class="panel mt-10 overflow-hidden">
+            {
+              STATUS_ORDER.map((s, i) => (
+                <div class:list={['grid grid-cols-1 gap-x-6 gap-y-1 px-5 py-4 sm:grid-cols-[10rem_minmax(0,1fr)]', { 'border-t border-line': i > 0 }]}>
+                  <dt class="font-mono text-sm">
+                    <StatusLight status={s} />
+                  </dt>
+                  <dd class="text-muted">{STATUSES[s].meaning}</dd>
+                </div>
+              ))
+            }
+          </dl>
+          <p class="mt-6 text-sm">
+            <a class="link" href="/docs/concepts/statuses/">Statuses</a>
+            <span class="text-muted"> · </span>
+            <a class="link" href="/docs/concepts/teams-and-resolution-rules/">Resolution rules</a>
+          </p>
+        </div>
+        <div class="min-w-0 lg:pt-20">
+          <p class="label">skillcrew.yaml, at the root of the registry</p>
+          <CodeBlock code={governanceYaml} lang="yaml" />
+        </div>
+      </div>
+    </section>
+
+    <!-- Agents -->
+    <section class="border-b border-line" aria-labelledby="agents-title">
+      <div class="wrap py-20 sm:py-24">
+        <header class="section-head grid-texture grid-texture-soft">
+          <p class="label">04 / Works with your agents</p>
+          <h2 id="agents-title" class="heading mt-3 max-w-2xl text-3xl sm:text-4xl">One copy on disk, read by every agent.</h2>
+        </header>
+        <p class="mt-4 max-w-prose text-muted">
+          Skills land in <code class="font-mono text-text">~/.agents/skills</code>, with symlinks for Claude Code. Here is
+          what we have tested for real.
+        </p>
+        <ul class="panel mt-10 overflow-hidden font-mono text-sm">
+          {
+            agents.map((a, i) => (
+              <li class:list={['grid grid-cols-1 gap-x-8 gap-y-1 px-5 py-3.5 md:grid-cols-[12rem_12rem_minmax(0,1fr)]', { 'border-t border-line': i > 0 }]}>
+                <span class="text-text">{a.name}</span>
+                <StatusLight status={a.status} text={a.result} />
+                <span class="text-muted">{a.detail}</span>
+              </li>
+            ))
+          }
+        </ul>
+        <p class="mt-4 text-sm text-muted">
+          As of 2026-10-11. Any agent that reads <code class="font-mono">~/.agents/skills</code> gets the skills; <code
+            class="font-mono">skillcrew doctor</code
+          > reports what it finds on each machine.
+        </p>
+      </div>
+    </section>
+
+    <!-- Security -->
+    <section class="border-b border-line" aria-labelledby="safe-title">
+      <div class="wrap py-20 sm:py-24">
+        <header class="section-head grid-texture grid-texture-soft">
+          <p class="label">05 / Safe by design</p>
+          <h2 id="safe-title" class="heading mt-3 max-w-2xl text-3xl sm:text-4xl">
+            It writes to every developer machine, so it trusts one thing only.
+          </h2>
+        </header>
+        <ul class="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {
+            safety.map(([head, tail]) => (
+              <li class="panel p-6">
+                <p class="heading text-lg">{head}</p>
+                <p class="mt-2 text-muted">{tail}</p>
+              </li>
+            ))
+          }
+        </ul>
+        <p class="mt-6">
+          <a class="link" href="/docs/concepts/security-model/">Read the security model</a>
+        </p>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section aria-labelledby="faq-title">
+      <div class="wrap grid grid-cols-1 gap-10 py-20 sm:py-24 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)] lg:gap-16">
+        <header class="section-head grid-texture grid-texture-soft self-start">
+          <p class="label">06 / FAQ</p>
+          <h2 id="faq-title" class="heading mt-3 text-3xl sm:text-4xl">Questions</h2>
+          <p class="mt-4 text-muted">
+            More in the <a class="link" href="/docs/troubleshooting/faq/">documentation FAQ</a>.
+          </p>
+        </header>
+        <dl class="min-w-0 max-w-prose">
+          {
+            faq.map(({ q, a }, i) => (
+              <div class:list={['py-6', { 'border-t border-line': i > 0 }]}>
+                <dt class="heading text-lg">{q}</dt>
+                <dd class="mt-2 text-muted">
+                  {parts(a).map((p) => (p.code ? <code class="font-mono text-[0.9em] text-text">{p.text}</code> : p.text))}
+                </dd>
+              </div>
+            ))
+          }
+        </dl>
+      </div>
+    </section>
+  </main>
+</BaseLayout>
+
+<style>
+  .hero-title {
+    /* Huge, but shorter viewports get a smaller title so the panel shows on arrival. */
+    font-size: clamp(2.75rem, min(8vw, 9.2vh), 6rem);
+    max-width: 16ch;
+  }
+  .section-head {
+    padding-top: 0.25rem;
+  }
+  .section-head::before {
+    inset: -2.5rem -1rem -1.5rem -1rem;
+  }
+  @media (min-width: 40rem) {
+    .section-head::before {
+      inset: -2.5rem -2rem -1.5rem -2rem;
+    }
+  }
+</style>

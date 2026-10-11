@@ -1,0 +1,90 @@
+version: 2
+
+builds:
+  - id: skillcrew
+    main: ./cmd/skillcrew
+    binary: skillcrew
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin]
+    goarch: [amd64, arm64]
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X main.version={{.Tag}}
+    # Reproducible builds: file times come from the commit, not the build host.
+    mod_timestamp: "{{ .CommitTimestamp }}"
+
+archives:
+  - id: default
+    formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: checksums.txt
+
+# Keyless signing (Sigstore, GitHub OIDC) of checksums.txt. The bundle
+# checksums.txt.sigstore.json holds the signature and the certificate; since
+# checksums.txt covers every archive, verifying it verifies them all.
+signs:
+  - cmd: cosign
+    artifacts: checksum
+    signature: "${artifact}.sigstore.json"
+    args:
+      - sign-blob
+      - "--bundle=${signature}"
+      - "${artifact}"
+      - "--yes"
+
+changelog:
+  use: github
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^ci:"
+      - "(?i)^bump "
+      - "Merge pull request"
+      - "Merge branch"
+  groups:
+    - title: Features
+      regexp: '^(?i)(add|support|introduce|implement|allow|enable)\b'
+      order: 0
+    - title: Fixes
+      regexp: '^(?i)(fix|correct|prevent|handle|avoid|repair)\b'
+      order: 1
+    - title: Other changes
+      order: 999
+
+release:
+  github:
+    owner: yoanbernabeu
+    name: skillcrew
+  prerelease: auto
+  mode: replace
+
+# Kept as a formula (not a cask) to match the other formulas in
+# yoanbernabeu/homebrew-tap (grepai, frankendeploy). `goreleaser check`
+# reports `brews` as deprecated in favor of `homebrew_casks`; this is
+# acknowledged and will be migrated together with the rest of the tap.
+brews:
+  - name: skillcrew
+    repository:
+      owner: yoanbernabeu
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    directory: Formula
+    homepage: https://github.com/yoanbernabeu/skillcrew
+    description: Distribute and govern AI agent skills across your team, in every agent
+    license: MIT
+    dependencies:
+      - name: git
+    install: |
+      bin.install "skillcrew"
+    test: |
+      system "#{bin}/skillcrew", "version"

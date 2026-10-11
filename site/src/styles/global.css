@@ -1,0 +1,435 @@
+@import 'tailwindcss';
+
+/* Design tokens. Only these colors exist: the default Tailwind palette is removed. */
+@theme {
+  --color-*: initial;
+  --color-bg: #0a0a0b;
+  --color-surface: #111113;
+  --color-line: #1f1f23;
+  --color-text: #ededed;
+  --color-muted: #8b8b93;
+  --color-amber: #f2a541;
+  --color-red: #c8553d;
+  --color-transparent: transparent;
+
+  --font-*: initial;
+  --font-sans: 'Geist Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+  --radius-panel: 6px;
+
+  --container-prose: 70ch;
+  --container-page: 76rem;
+}
+
+:root {
+  color-scheme: dark;
+  --bg: var(--color-bg);
+  --surface: var(--color-surface);
+  --line: var(--color-line);
+  --text: var(--color-text);
+  --muted: var(--color-muted);
+  --amber: var(--color-amber);
+  --red: var(--color-red);
+}
+
+@layer base {
+  html {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 100%;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+    scroll-padding-top: 5rem;
+  }
+  body {
+    background: var(--bg);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+  ::selection {
+    background: var(--amber);
+    color: var(--bg);
+  }
+  :focus-visible {
+    outline: 2px solid var(--amber);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+  a {
+    color: inherit;
+  }
+  code,
+  kbd,
+  pre,
+  samp {
+    font-family: var(--font-mono);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
+}
+
+@layer components {
+  /* Display headings: Geist Sans, bold, tight. */
+  .display {
+    font-family: var(--font-sans);
+    font-weight: 700;
+    letter-spacing: -0.035em;
+    line-height: 1.02;
+  }
+  .heading {
+    font-family: var(--font-sans);
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    line-height: 1.15;
+  }
+  .panel {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-panel);
+    background: var(--surface);
+  }
+
+  /* Faint 32px grid, faded out toward the edges with a radial mask. */
+  .grid-texture {
+    position: relative;
+    isolation: isolate;
+  }
+  .grid-texture::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Cpath d='M32 .5H.5V32' fill='none' stroke='%23ededed' stroke-opacity='.06'/%3E%3C/svg%3E");
+    background-position: center top;
+    mask-image: radial-gradient(ellipse 60% 70% at 50% 0%, #000 20%, transparent 100%);
+    -webkit-mask-image: radial-gradient(ellipse 60% 70% at 50% 0%, #000 20%, transparent 100%);
+  }
+  .grid-texture-soft::before {
+    mask-image: radial-gradient(ellipse 40% 100% at 20% 0%, rgb(0 0 0 / 0.6) 0%, transparent 100%);
+    -webkit-mask-image: radial-gradient(ellipse 40% 100% at 20% 0%, rgb(0 0 0 / 0.6) 0%, transparent 100%);
+  }
+  .wrap {
+    width: 100%;
+    max-width: var(--container-page);
+    margin-inline: auto;
+    padding-inline: 1rem;
+  }
+  @media (min-width: 40rem) {
+    .wrap {
+      padding-inline: 2rem;
+    }
+  }
+
+  /* Small uppercase mono label: section numbers, table heads, instrument captions. */
+  .label {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .link {
+    color: var(--amber);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.2em;
+  }
+  .link:hover {
+    text-decoration-thickness: 2px;
+  }
+
+  /* Instrument-panel status lights (see StatusLight.astro). */
+  .light {
+    display: inline-block;
+    width: 0.75em;
+    height: 0.75em;
+    flex: none;
+    vertical-align: -0.05em;
+  }
+  .pulse {
+    animation: pulse 3.2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.35;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pulse {
+      animation: none;
+    }
+  }
+
+  /* Code blocks produced by Shiki (Markdown and the CodeBlock component). */
+  .code-block {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-panel);
+    overflow: hidden;
+    background: var(--surface);
+    margin-block: 1.5rem;
+    min-width: 0;
+  }
+  .code-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.25rem 0.25rem 0.25rem 0.875rem;
+    border-bottom: 1px solid var(--line);
+  }
+  .code-lang {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .copy-btn {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--muted);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 0.25rem 0.625rem;
+    min-height: 2rem;
+    min-width: 4.5rem;
+    cursor: pointer;
+  }
+  .copy-btn:hover {
+    color: var(--amber);
+    border-color: var(--line);
+  }
+  .copy-btn[data-state='done'] {
+    color: var(--amber);
+  }
+  .code-block pre {
+    margin: 0;
+    padding: 0.875rem 1rem 1rem;
+    overflow-x: auto;
+    font-size: 0.875rem;
+    line-height: 1.65;
+    background: transparent !important;
+    tab-size: 2;
+  }
+  .code-block pre code {
+    display: block;
+    width: max-content;
+    min-width: 100%;
+  }
+  .code-block .line.out {
+    color: var(--muted);
+  }
+  .code-block .prompt {
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  /* Documentation prose. */
+  .prose {
+    max-width: var(--container-prose);
+    font-size: 1.0625rem;
+  }
+  .prose > * + * {
+    margin-top: 1.1em;
+  }
+  .prose h2 {
+    font-family: var(--font-sans);
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    font-size: 1.5rem;
+    line-height: 1.25;
+    margin-top: 2.75rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--line);
+  }
+  .prose h3 {
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    font-size: 1.125rem;
+    line-height: 1.35;
+    margin-top: 2rem;
+  }
+  .prose > h2:first-child {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+  }
+  .prose h2 + *,
+  .prose h3 + * {
+    margin-top: 0.75rem;
+  }
+  .prose a {
+    color: var(--amber);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.2em;
+  }
+  .prose a:hover {
+    text-decoration-thickness: 2px;
+  }
+  .prose strong {
+    font-weight: 600;
+    color: var(--text);
+  }
+  .prose ul,
+  .prose ol {
+    padding-left: 1.25rem;
+  }
+  .prose ul {
+    list-style: none;
+  }
+  .prose ul > li {
+    position: relative;
+  }
+  .prose ul > li::before {
+    content: '';
+    position: absolute;
+    left: -1.1rem;
+    top: 0.8em;
+    width: 0.5rem;
+    border-top: 1px solid var(--muted);
+  }
+  .prose ol {
+    list-style: decimal;
+  }
+  .prose ol > li::marker {
+    font-family: var(--font-mono);
+    font-size: 0.875em;
+    color: var(--muted);
+  }
+  .prose li + li {
+    margin-top: 0.4em;
+  }
+  .prose li > ul,
+  .prose li > ol {
+    margin-top: 0.4em;
+  }
+  .prose :not(pre) > code {
+    font-size: 0.875em;
+    padding: 0.1em 0.35em;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    background: var(--surface);
+    white-space: break-spaces;
+    overflow-wrap: anywhere;
+  }
+  .prose a code {
+    color: var(--amber);
+  }
+  .prose hr {
+    border: 0;
+    border-top: 1px solid var(--line);
+    margin-block: 2.5rem;
+  }
+  .prose .table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-panel);
+  }
+  .prose th:first-child,
+  .prose td:first-child {
+    padding-left: 1rem;
+  }
+  .prose table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9375rem;
+    line-height: 1.5;
+  }
+  .prose th {
+    font-family: var(--font-mono);
+    font-weight: 400;
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-align: left;
+    padding: 0.625rem 1rem 0.5rem 0;
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+  }
+  .prose td {
+    padding: 0.625rem 1rem 0.625rem 0;
+    vertical-align: top;
+    border-bottom: 1px solid var(--line);
+  }
+  .prose tr:last-child td {
+    border-bottom: 0;
+  }
+  .prose td.status-cell {
+    white-space: nowrap;
+  }
+  .prose td.status-cell > .light {
+    margin-right: 0.5em;
+  }
+  .prose td:first-child code {
+    white-space: nowrap;
+  }
+
+  /* Callouts: a thin left rule, a mono title, no filled box. */
+  .callout {
+    border-left: 2px solid var(--muted);
+    padding: 0.125rem 0 0.125rem 1.125rem;
+  }
+  .callout > * + * {
+    margin-top: 0.6em;
+  }
+  .callout-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .callout-title::before {
+    content: '';
+    width: 0.5rem;
+    height: 0.5rem;
+    border: 1.5px solid currentColor;
+    border-radius: 50%;
+    flex: none;
+  }
+  .callout-warning {
+    border-left-color: var(--amber);
+  }
+  .callout-warning .callout-title {
+    color: var(--amber);
+  }
+  .callout-warning .callout-title::before {
+    background: var(--amber);
+    border-color: var(--amber);
+  }
+  .callout-security {
+    border-left-color: var(--red);
+  }
+  .callout-security .callout-title {
+    color: var(--text);
+  }
+  .callout-security .callout-title::before {
+    border-radius: 0;
+    border: 0;
+    background: var(--red);
+  }
+}

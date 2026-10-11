@@ -1,0 +1,30 @@
+---
+// "On this page": h2 and h3 of the current page. The active section is
+// highlighted by a small script in DocsLayout.
+import type { MarkdownHeading } from 'astro';
+
+interface Props {
+  headings: MarkdownHeading[];
+}
+const { headings } = Astro.props;
+const items = headings.filter((h) => h.depth === 2 || h.depth === 3);
+---
+
+<ul class="space-y-1.5 border-l border-line text-sm">
+  {
+    items.map((h) => (
+      <li>
+        <a
+          href={`#${h.slug}`}
+          data-toc-link={h.slug}
+          class:list={[
+            '-ml-px block border-l border-transparent py-0.5 leading-snug text-muted hover:text-text',
+            h.depth === 3 ? 'pl-7' : 'pl-4',
+          ]}
+        >
+          {h.text}
+        </a>
+      </li>
+    ))
+  }
+</ul>

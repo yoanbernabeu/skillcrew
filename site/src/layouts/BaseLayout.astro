@@ -1,0 +1,110 @@
+---
+import '../styles/global.css';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import SearchDialog from '../components/SearchDialog.astro';
+import { SITE_NAME, absolute } from '../lib/site';
+
+import sans400 from '@fontsource/geist-sans/files/geist-sans-latin-400-normal.woff2?url';
+import sans500 from '@fontsource/geist-sans/files/geist-sans-latin-500-normal.woff2?url';
+import sans600 from '@fontsource/geist-sans/files/geist-sans-latin-600-normal.woff2?url';
+import sans700 from '@fontsource/geist-sans/files/geist-sans-latin-700-normal.woff2?url';
+import mono400 from '@fontsource/geist-mono/files/geist-mono-latin-400-normal.woff2?url';
+import mono500 from '@fontsource/geist-mono/files/geist-mono-latin-500-normal.woff2?url';
+
+interface Props {
+  /** Full <title>. */
+  title: string;
+  description: string;
+  /** Site path of the page, e.g. /docs/concepts/registry/ */
+  path: string;
+  /** Site path of the Open Graph image. */
+  ogImage: string;
+  ogType?: 'website' | 'article';
+  /** Site path of the Markdown version of the page. */
+  markdown?: string;
+  jsonLd?: Record<string, unknown>[];
+  current?: 'home' | 'docs';
+  /** Error pages: no canonical, not indexed. */
+  noindex?: boolean;
+}
+
+const { title, description, path, ogImage, ogType = 'website', markdown, jsonLd = [], current, noindex = false } = Astro.props;
+const canonical = absolute(path);
+const image = absolute(ogImage);
+
+const unicodeRange =
+  'U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD';
+const faces: [string, number, string][] = [
+  ['Geist Sans', 400, sans400],
+  ['Geist Sans', 500, sans500],
+  ['Geist Sans', 600, sans600],
+  ['Geist Sans', 700, sans700],
+  ['Geist Mono', 400, mono400],
+  ['Geist Mono', 500, mono500],
+]
+const fontCss = faces
+  .map(
+    ([family, weight, url]) =>
+      `@font-face{font-family:'${family}';font-style:normal;font-weight:${weight};font-display:swap;src:url(${url}) format('woff2');unicode-range:${unicodeRange}}`,
+  )
+  .join('');
+---
+
+<!doctype html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta name="author" content="YoanDev" />
+    {noindex ? <meta name="robots" content="noindex" /> : <link rel="canonical" href={canonical} />}
+    <meta name="theme-color" content="#0A0A0B" />
+    <meta name="color-scheme" content="dark" />
+
+    <link rel="preload" href={sans400} as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href={sans700} as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href={mono400} as="font" type="font/woff2" crossorigin />
+    <style is:inline set:html={fontCss} />
+
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+    {markdown && <link rel="alternate" type="text/markdown" href={markdown} title="Markdown version" />}
+    <link rel="alternate" type="text/plain" href="/llms.txt" title="llms.txt" />
+
+    <meta property="og:type" content={ogType} />
+    <meta property="og:site_name" content={SITE_NAME} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    {!noindex && <meta property="og:url" content={canonical} />}
+    <meta property="og:image" content={image} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={title} />
+    <meta property="og:locale" content="en_US" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={image} />
+
+    {jsonLd.map((data) => <script type="application/ld+json" is:inline set:html={JSON.stringify(data)} />)}
+  </head>
+  <body>
+    <a
+      href="#main"
+      class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-3 focus:z-50 focus:bg-amber focus:px-3 focus:py-2 focus:font-mono focus:text-sm focus:text-bg"
+      >Skip to content</a
+    >
+    <Header {...current ? { current } : {}} />
+    <slot />
+    <Footer />
+    <SearchDialog />
+    <p id="copy-status" class="sr-only" role="status" aria-live="polite"></p>
+    <script>
+      import '../scripts/ui.ts';
+    </script>
+  </body>
+</html>

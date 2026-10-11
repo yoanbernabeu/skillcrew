@@ -1,0 +1,41 @@
+name: Feature request
+description: Propose a feature or a new agent to support. Agents implement accepted issues, so be specific.
+labels: [enhancement, triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Skillcrew does not take pull requests: accepted issues are implemented by coding agents. The clearer the use case and the acceptance criteria, the faster it ships. See [CONTRIBUTING.md](https://github.com/yoanbernabeu/skillcrew/blob/main/CONTRIBUTING.md).
+  - type: textarea
+    id: problem
+    attributes:
+      label: Use case
+      description: What are you trying to do, for whom (developers, skill maintainers, registry administrators), and what gets in the way today?
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected behavior
+      description: How should Skillcrew behave? Commands, flags, `skillcrew.yaml` fields, output, error messages.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: How will we know it works? Concrete, testable statements.
+      placeholder: |
+        - `skillcrew list --json` includes a `pinned` field for pinned skills
+        - a skill pinned to a missing tag stays installed and `doctor` reports it
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Agents and versions involved, links to their documentation, prior art in other tools.

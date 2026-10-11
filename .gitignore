@@ -1,0 +1,8 @@
+/skillcrew
+/dist/
+*.test
+*.out
+coverage.*
+.DS_Store
+.idea/
+.vscode/

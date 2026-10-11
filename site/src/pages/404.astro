@@ -1,0 +1,15 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="Page not found · Skillcrew" description="This page does not exist." path="/404/" ogImage="/og/index.png" noindex>
+  <main id="main" tabindex="-1" class="wrap py-24 focus:outline-none">
+    <p class="label">Error 404</p>
+    <h1 class="heading mt-3 text-4xl">Page not found.</h1>
+    <p class="mt-4 max-w-prose text-muted">This page does not exist. It may have moved.</p>
+    <p class="mt-8 flex gap-6 font-mono text-sm">
+      <a class="link" href="/">Home</a>
+      <a class="link" href="/docs/">Documentation</a>
+    </p>
+  </main>
+</BaseLayout>

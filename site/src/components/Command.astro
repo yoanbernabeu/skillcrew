@@ -1,0 +1,20 @@
+---
+// A single copyable shell command, rendered as an instrument readout.
+interface Props {
+  command: string;
+  class?: string;
+}
+const { command, class: className } = Astro.props;
+---
+
+<div class:list={['flex items-stretch overflow-hidden rounded-md border border-line bg-surface font-mono text-sm sm:text-[0.9375rem] min-w-0', className]}>
+  <code class="flex-1 min-w-0 overflow-x-auto whitespace-nowrap px-3 py-3 sm:px-4">
+    <span class="text-muted select-none" aria-hidden="true">$ </span>{command}
+  </code>
+  <button
+    type="button"
+    class="copy-btn border-l! border-l-line! min-w-[4.5rem] px-3 sm:min-w-[5.5rem] sm:px-4"
+    data-copy-text={command}
+    aria-label={`Copy the command: ${command}`}>Copy</button
+  >
+</div>

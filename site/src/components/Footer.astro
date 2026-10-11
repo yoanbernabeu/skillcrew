@@ -1,0 +1,31 @@
+---
+import Command from './Command.astro';
+import { INSTALL_COMMAND, REPO_URL } from '../lib/site';
+---
+
+<footer class="border-t border-line">
+  <div class="wrap relative grid grid-cols-1 gap-10 py-14 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+    <div class="min-w-0 max-w-xl">
+      <p class="label mb-3">Install</p>
+      <Command command={INSTALL_COMMAND} />
+      <p class="mt-3 text-sm text-muted">
+        macOS or Linux (Windows through WSL2), with <code class="font-mono">git</code>.
+        <a class="link" href="/docs/getting-started/install/">Other install methods</a>
+      </p>
+    </div>
+    <nav aria-label="Footer" class="font-mono text-sm">
+      <ul class="flex flex-wrap gap-x-6 gap-y-2">
+        <li><a class="hover:text-amber" href="/docs/">Docs</a></li>
+        <li><a class="hover:text-amber" href={REPO_URL}>GitHub</a></li>
+        <li><a class="hover:text-amber" href={`${REPO_URL}/blob/main/LICENSE`}>License MIT</a></li>
+        <li><a class="hover:text-amber" href="/llms.txt">llms.txt</a></li>
+      </ul>
+    </nav>
+    <div class="flex flex-col gap-2 border-t border-line pt-6 text-xs text-muted sm:flex-row sm:justify-between md:col-span-2">
+      <p class="font-mono">
+        Made by <a href="https://yoandev.co" class="text-text hover:text-amber focus-visible:text-amber">YoanDev</a>
+      </p>
+      <p>Not affiliated with Anthropic, OpenAI, GitHub, Cursor or Google. Product names are trademarks of their owners.</p>
+    </div>
+  </div>
+</footer>

@@ -1,0 +1,248 @@
+---
+import type { MarkdownHeading } from 'astro';
+import BaseLayout from './BaseLayout.astro';
+import DocsNav from '../components/DocsNav.astro';
+import Toc from '../components/Toc.astro';
+import { SITE_NAME, absolute } from '../lib/site';
+
+interface Link {
+  href: string;
+  title: string;
+}
+
+interface Props {
+  title: string;
+  description: string;
+  path: string;
+  ogImage: string;
+  /** Section of the page, for the breadcrumb (absent on the docs overview). */
+  section?: { id: string; title: string };
+  headings?: MarkdownHeading[];
+  editUrl?: string;
+  markdown?: string;
+  prev?: Link | undefined;
+  next?: Link | undefined;
+}
+
+const { title, description, path, ogImage, section, headings = [], editUrl, markdown, prev, next } = Astro.props;
+const tocItems = headings.filter((h) => h.depth === 2 || h.depth === 3);
+
+const crumbs: { name: string; url: string }[] = [{ name: 'Docs', url: '/docs/' }];
+if (section) crumbs.push({ name: section.title, url: `/docs/#${section.id}` }, { name: title, url: path });
+
+const jsonLd: Record<string, unknown>[] = [];
+if (section) {
+  jsonLd.push(
+    {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: crumbs.map((c, i) => ({ '@type': 'ListItem', position: i + 1, name: c.name, item: absolute(c.url) })),
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'TechArticle',
+      headline: title,
+      description,
+      url: absolute(path),
+      image: absolute(ogImage),
+      inLanguage: 'en',
+      articleSection: section.title,
+      isPartOf: { '@type': 'WebSite', name: `${SITE_NAME} documentation`, url: absolute('/docs/') },
+      about: { '@type': 'SoftwareApplication', name: SITE_NAME, url: absolute('/') },
+      author: { '@type': 'Person', name: 'YoanDev', url: 'https://yoandev.co' },
+    },
+  );
+}
+---
+
+<BaseLayout
+  title={section ? `${title} · ${SITE_NAME} docs` : `${title} · ${SITE_NAME}`}
+  description={description}
+  path={path}
+  ogImage={ogImage}
+  ogType={section ? 'article' : 'website'}
+  {...markdown ? { markdown } : {}}
+  jsonLd={jsonLd}
+  current="docs"
+>
+  <div class="wrap grid grid-cols-1 gap-x-12 lg:grid-cols-[14.5rem_minmax(0,1fr)] xl:grid-cols-[14.5rem_minmax(0,1fr)_13rem]">
+    <!-- Mobile navigation -->
+    <details class="docs-menu -mx-4 border-b border-line px-4 lg:hidden">
+      <summary class="flex cursor-pointer items-center justify-between py-3 font-mono text-sm">
+        <span><span class="text-muted">Menu</span>{section && <span class="text-muted"> / {section.title}</span>}</span>
+        <span class="menu-caret text-muted" aria-hidden="true">+</span>
+      </summary>
+      <nav aria-label="Documentation menu" class="pb-6 pt-2">
+        <DocsNav currentPath={path} />
+      </nav>
+    </details>
+
+    <!-- Desktop navigation -->
+    <div class="hidden lg:block">
+      <nav aria-label="Documentation" class="sticky top-14 max-h-[calc(100vh-3.5rem)] overflow-y-auto py-10 pr-2">
+        <DocsNav currentPath={path} />
+      </nav>
+    </div>
+
+    <main id="main" class="min-w-0 py-8 lg:py-10" tabindex="-1">
+      <article data-pagefind-body>
+        <nav aria-label="Breadcrumb" class="mb-6 font-mono text-xs text-muted" data-pagefind-ignore>
+          <ol class="flex flex-wrap items-center gap-x-2">
+            {
+              crumbs.map((c, i) => (
+                <li class="flex items-center gap-x-2">
+                  {i > 0 && <span aria-hidden="true">/</span>}
+                  {i === crumbs.length - 1 ? (
+                    <span aria-current="page" class="text-text">
+                      {c.name}
+                    </span>
+                  ) : (
+                    <a href={c.url} class="hover:text-amber">
+                      {c.name}
+                    </a>
+                  )}
+                </li>
+              ))
+            }
+          </ol>
+        </nav>
+        <header class="max-w-prose border-b border-line pb-7">
+          <h1 class="heading text-[2rem] sm:text-[2.5rem]">{title}</h1>
+          <p class="mt-4 text-lg leading-relaxed text-muted">{description}</p>
+          {section && <span class="hidden" data-pagefind-meta="section">{section.title}</span>}
+          {
+            markdown && (
+              <div class="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 font-mono text-xs" data-pagefind-ignore>
+                <button type="button" class="copy-btn border-line! min-w-0 px-2.5 rounded-md!" data-copy-md={markdown}>
+                  Copy as Markdown
+                </button>
+                <a href={markdown} class="text-muted hover:text-amber">
+                  View as Markdown
+                </a>
+              </div>
+            )
+          }
+        </header>
+
+        {
+          tocItems.length > 1 && (
+            <details class="toc-mobile mt-6 rounded-md border border-line xl:hidden" data-pagefind-ignore>
+              <summary class="cursor-pointer px-4 py-2.5 font-mono text-xs uppercase tracking-[0.08em] text-muted">On this page</summary>
+              <nav aria-label="On this page (compact)" class="px-4 pb-4">
+                <Toc headings={headings} />
+              </nav>
+            </details>
+          )
+        }
+
+        <div class="prose mt-8">
+          <slot />
+        </div>
+      </article>
+
+      {
+        (prev || next || editUrl) && (
+          <footer class="mt-16 max-w-prose" data-pagefind-ignore>
+            {(prev || next) && (
+              <nav aria-label="Previous and next pages" class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {prev ? (
+                  <a href={prev.href} rel="prev" class="group panel block px-4 py-4 hover:border-muted">
+                    <span class="label block">Previous</span>
+                    <span class="mt-1 block group-hover:text-amber">{prev.title}</span>
+                  </a>
+                ) : (
+                  <span class="hidden sm:block" />
+                )}
+                {next && (
+                  <a href={next.href} rel="next" class="group panel block px-4 py-4 text-right hover:border-muted">
+                    <span class="label block">Next</span>
+                    <span class="mt-1 block group-hover:text-amber">{next.title}</span>
+                  </a>
+                )}
+              </nav>
+            )}
+            {editUrl && (
+              <p class="mt-6 font-mono text-xs">
+                <a href={editUrl} class="text-muted hover:text-amber">
+                  Edit this page on GitHub
+                </a>
+              </p>
+            )}
+          </footer>
+        )
+      }
+    </main>
+
+    {
+      tocItems.length > 1 ? (
+        <div class="hidden xl:block" data-pagefind-ignore>
+          <nav aria-label="On this page" class="sticky top-14 max-h-[calc(100vh-3.5rem)] overflow-y-auto py-10">
+            <p class="label mb-3">On this page</p>
+            <Toc headings={headings} />
+          </nav>
+        </div>
+      ) : (
+        <div class="hidden xl:block" />
+      )
+    }
+  </div>
+</BaseLayout>
+
+<style>
+  .docs-menu summary,
+  .toc-mobile summary {
+    list-style: none;
+  }
+  .docs-menu summary::-webkit-details-marker,
+  .toc-mobile summary::-webkit-details-marker {
+    display: none;
+  }
+  .docs-menu[open] .menu-caret {
+    transform: rotate(45deg);
+  }
+  :global([data-toc-link].active) {
+    color: var(--amber);
+    border-left-color: var(--amber);
+  }
+  main:focus {
+    outline: none;
+  }
+</style>
+
+<script>
+  // Highlight the heading currently in view in "On this page".
+  const links = Array.from(document.querySelectorAll<HTMLAnchorElement>('[data-toc-link]'));
+  const ids = [...new Set(links.map((l) => l.dataset['tocLink'] ?? ''))];
+  const headings = ids.map((id) => document.getElementById(id)).filter((h): h is HTMLElement => h !== null);
+  if (headings.length > 0) {
+    const update = () => {
+      const offset = 120;
+      let current = headings[0]?.id;
+      for (const h of headings) {
+        if (h.getBoundingClientRect().top - offset <= 0) current = h.id;
+        else break;
+      }
+      if (window.innerHeight + window.scrollY >= document.body.scrollHeight - 2) current = headings.at(-1)?.id;
+      for (const l of links) {
+        const on = l.dataset['tocLink'] === current;
+        l.classList.toggle('active', on);
+        if (on) l.setAttribute('aria-current', 'location');
+        else l.removeAttribute('aria-current');
+      }
+    };
+    let ticking = false;
+    window.addEventListener(
+      'scroll',
+      () => {
+        if (ticking) return;
+        ticking = true;
+        requestAnimationFrame(() => {
+          update();
+          ticking = false;
+        });
+      },
+      { passive: true },
+    );
+    update();
+  }
+</script>

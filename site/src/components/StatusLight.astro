@@ -1,0 +1,26 @@
+---
+// An instrument light for a skill status. The shape always comes with the text
+// label (visible by default, or visually hidden with `label="hidden"`), so the
+// status never relies on color alone.
+import { STATUSES, type Status } from '../lib/statuses';
+import { lightSvg } from '../lib/icon';
+
+interface Props {
+  status: Status;
+  /** "visible" (default): the status name follows the light; "hidden": screen readers only; "none": decorative. */
+  label?: 'visible' | 'hidden' | 'none';
+  /** Custom text instead of the status name. */
+  text?: string;
+  pulse?: boolean;
+  class?: string;
+}
+
+const { status, label = 'visible', text, pulse = false, class: className } = Astro.props;
+const name = text ?? STATUSES[status].name;
+---
+
+<span class:list={['inline-flex items-center gap-[0.5em]', className]}>
+  <Fragment set:html={lightSvg(status, pulse ? 'light pulse' : 'light')} />
+  {label === 'visible' && <span>{name}</span>}
+  {label === 'hidden' && <span class="sr-only">{name}</span>}
+</span>

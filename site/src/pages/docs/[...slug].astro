@@ -1,0 +1,40 @@
+---
+import type { GetStaticPaths } from 'astro';
+import { render } from 'astro:content';
+import DocsLayout from '../../layouts/DocsLayout.astro';
+import { getDocs, docPath, docMarkdownPath, docOgPath, sectionTitle, type Doc } from '../../lib/docs';
+import { editUrl } from '../../lib/site';
+
+export const getStaticPaths = (async () => {
+  const docs = await getDocs();
+  return docs.map((doc, i) => ({
+    params: { slug: doc.id },
+    props: { doc, prev: docs[i - 1], next: docs[i + 1] },
+  }));
+}) satisfies GetStaticPaths;
+
+interface Props {
+  doc: Doc;
+  prev: Doc | undefined;
+  next: Doc | undefined;
+}
+
+const { doc, prev, next } = Astro.props;
+const { Content, headings } = await render(doc);
+const link = (d: Doc | undefined) => (d ? { href: docPath(d), title: d.data.title } : undefined);
+---
+
+<DocsLayout
+  title={doc.data.title}
+  description={doc.data.description}
+  path={docPath(doc)}
+  ogImage={docOgPath(doc)}
+  section={{ id: doc.data.section, title: sectionTitle(doc.data.section) }}
+  headings={headings}
+  editUrl={editUrl(doc.id)}
+  markdown={docMarkdownPath(doc)}
+  prev={link(prev)}
+  next={link(next)}
+>
+  <Content />
+</DocsLayout>

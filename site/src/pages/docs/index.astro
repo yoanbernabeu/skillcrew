@@ -1,0 +1,45 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+import { getDocs, groupBySection, docPath } from '../../lib/docs';
+
+const groups = groupBySection(await getDocs());
+---
+
+<DocsLayout
+  title="Documentation"
+  description="Install Skillcrew, publish your team's skills from one registry, and keep every developer's agents in sync."
+  path="/docs/"
+  ogImage="/og/docs.png"
+>
+  {
+    groups.map((g) => (
+      <section aria-labelledby={g.id} class="not-first:mt-12">
+        <h2 id={g.id}>{g.title}</h2>
+        <ul class="docs-index mt-4!">
+          {g.docs.map((d) => (
+            <li>
+              <a href={docPath(d)}>{d.data.title}</a>
+              <span class="block text-muted text-[0.9375rem]">{d.data.description}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+    ))
+  }
+</DocsLayout>
+
+<style>
+  .docs-index {
+    padding-left: 0 !important;
+  }
+  .docs-index > li::before {
+    display: none;
+  }
+  .docs-index > li {
+    padding-block: 0.75rem;
+    border-bottom: 1px solid var(--line);
+  }
+  .docs-index > li + li {
+    margin-top: 0 !important;
+  }
+</style>

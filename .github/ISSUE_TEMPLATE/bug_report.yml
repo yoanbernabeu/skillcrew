@@ -1,0 +1,77 @@
+name: Bug report
+description: Something does not work as documented.
+labels: [bug, triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. For security issues, do not use this form: see the [security policy](https://github.com/yoanbernabeu/skillcrew/security/policy).
+  - type: input
+    id: version
+    attributes:
+      label: Skillcrew version
+      description: Output of `skillcrew --version`.
+      placeholder: skillcrew v0.1.0
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - macOS
+        - Linux
+        - Windows (WSL2)
+    validations:
+      required: true
+  - type: input
+    id: os-version
+    attributes:
+      label: OS version
+      placeholder: macOS 15.1, Ubuntu 24.04, ...
+  - type: checkboxes
+    id: agents
+    attributes:
+      label: Agents used
+      options:
+        - label: Claude Code
+        - label: Codex CLI
+        - label: GitHub Copilot CLI / VS Code
+        - label: Cursor
+        - label: Gemini CLI
+        - label: Other (say which below)
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Commands you ran, and a minimal `skillcrew.yaml` if relevant.
+      placeholder: |
+        1. skillcrew init github.com/acme/skills --team backend
+        2. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include error messages.
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Output of `skillcrew doctor`
+      description: Remove anything private (registry URL, usernames, tokens) before posting.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Anything else

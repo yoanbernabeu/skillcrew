@@ -1,0 +1,65 @@
+---
+// How skills travel: registry → sync (triggered by hooks and the timer) →
+// copies in ~/.agents/skills and symlinks in ~/.claude/skills.
+---
+
+<div class="overflow-x-auto">
+  <svg
+    viewBox="0 0 560 396"
+    class="block w-full min-w-[32rem] font-mono"
+    role="img"
+    aria-labelledby="flow-title flow-desc"
+  >
+    <title id="flow-title">How Skillcrew syncs skills</title>
+    <desc id="flow-desc">
+      The registry is fetched by skillcrew sync, which runs on every agent session start (hooks) and every hour (timer). Sync
+      writes real copies to ~/.agents/skills and symlinks to them in ~/.claude/skills.
+    </desc>
+    <defs>
+      <marker id="arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+        <path d="M0 0.5 L7.5 4 L0 7.5" fill="none" stroke="var(--muted)" stroke-width="1"></path>
+      </marker>
+    </defs>
+
+    <g font-size="13" fill="var(--text)">
+      <!-- Registry -->
+      <rect x="140.5" y="8.5" width="279" height="60" fill="var(--surface)" stroke="var(--line)"></rect>
+      <text x="156" y="31" font-size="10.5" letter-spacing="1.2" fill="var(--muted)">REGISTRY</text>
+      <text x="156" y="53">acme/skills · skillcrew.yaml</text>
+
+      <!-- Triggers -->
+      <rect x="8.5" y="104.5" width="187" height="48" fill="var(--surface)" stroke="var(--line)"></rect>
+      <text x="22" y="125">session-start hooks</text>
+      <text x="22" y="143" font-size="11" fill="var(--muted)">every agent session</text>
+      <rect x="364.5" y="104.5" width="187" height="48" fill="var(--surface)" stroke="var(--line)"></rect>
+      <text x="378" y="125">hourly timer</text>
+      <text x="378" y="143" font-size="11" fill="var(--muted)">launchd · systemd</text>
+
+      <!-- Sync -->
+      <rect x="200.5" y="198.5" width="159" height="48" fill="var(--bg)" stroke="var(--amber)"></rect>
+      <circle cx="220" cy="222.5" r="4" fill="var(--amber)"></circle>
+      <text x="232" y="227">skillcrew sync</text>
+
+      <!-- Outputs -->
+      <rect x="8.5" y="304.5" width="259" height="84" fill="var(--surface)" stroke="var(--line)"></rect>
+      <text x="24" y="328">~/.agents/skills</text>
+      <text x="24" y="348" font-size="11" fill="var(--muted)">real copies</text>
+      <text x="24" y="372" font-size="11" fill="var(--muted)">Codex · Copilot · Cursor · Gemini</text>
+      <rect x="292.5" y="304.5" width="259" height="84" fill="var(--surface)" stroke="var(--line)"></rect>
+      <text x="308" y="328">~/.claude/skills</text>
+      <text x="308" y="348" font-size="11" fill="var(--muted)">symlinks to the copies</text>
+      <text x="308" y="372" font-size="11" fill="var(--muted)">Claude Code</text>
+    </g>
+
+    <g fill="none" stroke="var(--muted)" stroke-width="1">
+      <path d="M280.5 69 V196" marker-end="url(#arrow)"></path>
+      <path d="M102.5 153 V222.5 H198" marker-end="url(#arrow)"></path>
+      <path d="M458.5 153 V222.5 H362" marker-end="url(#arrow)"></path>
+      <path d="M280.5 247 V276.5 M140.5 302 V276.5 H420.5 V302"></path>
+      <path d="M140.5 276.5 V302" marker-end="url(#arrow)"></path>
+      <path d="M420.5 276.5 V302" marker-end="url(#arrow)"></path>
+      <path d="M291 346.5 H270" stroke-dasharray="3 3" marker-end="url(#arrow)"></path>
+    </g>
+    <text x="290" y="120" font-size="11" fill="var(--muted)">git fetch</text>
+  </svg>
+</div>

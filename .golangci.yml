@@ -1,0 +1,84 @@
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  default: none
+  enable:
+    - errcheck
+    - govet
+    - staticcheck
+    - unused
+    - ineffassign
+    - misspell
+    - revive
+    - bodyclose
+    - errorlint
+    - gosec
+    - nolintlint
+    - unconvert
+  settings:
+    misspell:
+      locale: US
+    revive:
+      rules:
+        - name: blank-imports
+        - name: context-as-argument
+        - name: dot-imports
+        - name: error-naming
+        - name: error-return
+        - name: error-strings
+        - name: errorf
+        - name: exported
+        - name: increment-decrement
+        - name: indent-error-flow
+        - name: package-comments
+        - name: range
+        - name: receiver-naming
+        - name: redefines-builtin-id
+        - name: superfluous-else
+        - name: time-naming
+        - name: unexported-return
+        - name: unreachable-code
+        - name: unused-parameter
+          disabled: true # noisy with interface implementations and test helpers
+        - name: var-declaration
+        - name: var-naming
+    gosec:
+      excludes:
+        # Skillcrew deliberately shells out to git, gh, glab, launchctl and
+        # systemctl with arguments it builds itself.
+        - G204
+        # Paths come from the user's home directory or the registry clone,
+        # which are validated before use; flagging every os.Open is noise.
+        - G304
+        # Skills, hooks and unit files are meant to be readable by the user's
+        # agents and by launchd/systemd: 0755 directories and 0644 files are
+        # intended.
+        - G301
+        - G302
+        - G306
+        # Unhandled errors are errcheck's job, with its std-error-handling
+        # exclusions (deferred Close and friends); G104 duplicates it.
+        - G104
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - std-error-handling
+    rules:
+      # Tests create throwaway files and directories with arbitrary modes.
+      - path: _test\.go
+        linters:
+          - gosec
+          - errcheck
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/yoanbernabeu/skillcrew

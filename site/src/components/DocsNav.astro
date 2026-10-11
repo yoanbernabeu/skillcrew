@@ -1,0 +1,47 @@
+---
+// The documentation navigation: sections and pages, current page in amber.
+import { getDocs, groupBySection, docPath } from '../lib/docs';
+
+interface Props {
+  currentPath: string;
+}
+const { currentPath } = Astro.props;
+const groups = groupBySection(await getDocs());
+---
+
+<ul class="space-y-7">
+  <li>
+    <a
+      href="/docs/"
+      class:list={['block font-mono text-sm', currentPath === '/docs/' ? 'text-amber' : 'text-text hover:text-amber']}
+      aria-current={currentPath === '/docs/' ? 'page' : undefined}>Overview</a
+    >
+  </li>
+  {
+    groups.map((g) => (
+      <li>
+        <p class="label mb-2.5">{g.title}</p>
+        <ul class="border-l border-line">
+          {g.docs.map((d) => {
+            const href = docPath(d);
+            const active = href === currentPath;
+            return (
+              <li>
+                <a
+                  href={href}
+                  class:list={[
+                    '-ml-px block border-l py-1.5 pl-4 text-[0.9375rem] leading-snug',
+                    active ? 'border-amber text-amber' : 'border-transparent text-text hover:text-amber',
+                  ]}
+                  aria-current={active ? 'page' : undefined}
+                >
+                  {d.data.title}
+                </a>
+              </li>
+            );
+          })}
+        </ul>
+      </li>
+    ))
+  }
+</ul>

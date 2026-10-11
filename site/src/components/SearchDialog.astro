@@ -1,0 +1,73 @@
+---
+// Search dialog backed by the Pagefind index (built after `astro build`).
+// The Pagefind script is only loaded the first time the dialog opens.
+---
+
+<dialog id="search" class="search-dialog" aria-label="Search the documentation">
+  <div class="overflow-hidden rounded-md border border-line bg-bg">
+    <form method="dialog" role="search" class="flex items-center gap-3 border-b border-line px-4">
+      <label for="search-input" class="label shrink-0">Find</label>
+      <input
+        id="search-input"
+        type="search"
+        placeholder="Search the documentation"
+        autocomplete="off"
+        spellcheck="false"
+        class="min-w-0 flex-1 bg-transparent py-4 font-mono text-base text-text placeholder:text-muted focus:outline-none"
+      />
+      <button type="submit" value="close" class="rounded border border-line px-2 py-1 font-mono text-xs text-muted hover:text-text" aria-label="Close search">Esc</button>
+    </form>
+    <p id="search-status" class="px-4 py-3 font-mono text-xs text-muted" role="status" aria-live="polite">Type to search the documentation.</p>
+    <ul id="search-results" class="max-h-[60vh] overflow-y-auto" aria-label="Results"></ul>
+  </div>
+</dialog>
+
+<style is:global>
+  .search-dialog {
+    width: min(42rem, calc(100vw - 2rem));
+    margin: 12vh auto auto;
+    padding: 0;
+    background: transparent;
+    color: var(--text);
+    border: 0;
+  }
+  .search-dialog::backdrop {
+    background: rgb(14 18 23 / 0.85);
+  }
+  .search-dialog input[type='search']::-webkit-search-cancel-button {
+    display: none;
+  }
+  #search-results a {
+    display: block;
+    padding: 0.75rem 1rem;
+    border-top: 1px solid var(--line);
+    text-decoration: none;
+  }
+  #search-results a:hover,
+  #search-results a:focus-visible {
+    background: var(--surface);
+    outline-offset: -2px;
+  }
+  #search-results .r-title {
+    display: block;
+    color: var(--amber);
+    font-weight: 600;
+  }
+  #search-results .r-path {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+  #search-results .r-excerpt {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+    color: var(--muted);
+  }
+  #search-results mark {
+    background: transparent;
+    color: var(--text);
+    font-weight: 600;
+  }
+</style>

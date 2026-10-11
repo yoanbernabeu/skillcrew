@@ -1,0 +1,19 @@
+---
+// A highlighted code block with a copy button, rendered at build time with the
+// same theme and transformer as Markdown code blocks. Use lang="console" for a
+// terminal session: lines starting with "$ " are commands, the rest is output.
+import { Code } from 'astro:components';
+import { theme, codeTransformer } from '../lib/shiki';
+
+interface Props {
+  code: string;
+  lang?: 'console' | 'sh' | 'yaml' | 'json' | 'text';
+  class?: string;
+}
+
+const { code, lang = 'sh', class: className } = Astro.props;
+---
+
+<div class:list={['contents', className]}>
+  <Code code={code.replace(/\n$/, '')} lang={lang} theme={theme} transformers={[codeTransformer]} />
+</div>

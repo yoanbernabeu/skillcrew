@@ -1,0 +1,155 @@
+---
+// Hero product panel: one skill, five agents. On load each agent switches from
+// "pending" to "synced", one after another. CSS only; reduced motion shows the
+// final state. Fixed row heights and widths: no layout shift.
+const agents = ['Claude Code', 'Codex', 'Cursor', 'Copilot', 'Gemini CLI'];
+---
+
+<figure class="sync-panel panel">
+  <div class="sync-bar">
+    <span class="sync-dots" aria-hidden="true"><span></span><span></span><span></span></span>
+    <span class="sync-head">acme/skills · main · just now</span>
+  </div>
+  <div class="sync-skill">
+    <span class="sync-k">skill</span>
+    <span><span class="text-text">security:review</span><span class="text-muted"> · v2</span></span>
+  </div>
+  <ul class="sync-list" aria-label="Agents on this machine">
+    {
+      agents.map((name, i) => (
+        <li style={`--i:${i}`}>
+          <span>{name}</span>
+          <span class="sync-state">
+            <span class="sync-light" aria-hidden="true" />
+            <span class="sync-text">
+              <span class="sync-pending" aria-hidden="true">
+                pending
+              </span>
+              <span class="sync-done">synced</span>
+            </span>
+          </span>
+        </li>
+      ))
+    }
+  </ul>
+  <figcaption class="sr-only">One skill from the acme/skills registry, synced to five agents.</figcaption>
+</figure>
+
+<style>
+  .sync-panel {
+    width: 100%;
+    max-width: 34rem;
+    margin-inline: auto;
+    overflow: hidden;
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+    text-align: left;
+  }
+  .sync-bar {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    height: 2.5rem;
+    padding: 0 1rem;
+    border-bottom: 1px solid var(--line);
+    background: var(--bg);
+  }
+  .sync-dots {
+    display: inline-flex;
+    gap: 0.375rem;
+  }
+  .sync-dots span {
+    width: 0.625rem;
+    height: 0.625rem;
+    border-radius: 50%;
+    background: var(--line);
+  }
+  .sync-head {
+    color: var(--muted);
+    font-size: 0.8125rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .sync-skill {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    height: 3rem;
+    padding: 0 1.25rem;
+    border-bottom: 1px solid var(--line);
+  }
+  .sync-k {
+    font-size: 0.6875rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    width: 3rem;
+  }
+  .sync-list li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 2.75rem;
+    padding: 0 1.25rem;
+  }
+  .sync-list li + li {
+    border-top: 1px solid var(--line);
+  }
+  .sync-state {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.625rem;
+  }
+  .sync-light {
+    width: 0.625rem;
+    height: 0.625rem;
+    border-radius: 50%;
+    background: var(--amber);
+    border: 1.5px solid var(--amber);
+  }
+  .sync-text {
+    display: inline-grid;
+    width: 7ch;
+  }
+  .sync-text > span {
+    grid-area: 1 / 1;
+  }
+  .sync-done {
+    color: var(--text);
+  }
+  .sync-pending {
+    color: var(--muted);
+    opacity: 0;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .sync-light {
+      animation: sync-on 0.3s ease-out calc(0.6s + var(--i) * 0.18s) both;
+    }
+    .sync-done {
+      animation: sync-show 0.3s ease-out calc(0.6s + var(--i) * 0.18s) both;
+    }
+    .sync-pending {
+      animation: sync-hide 0.3s ease-out calc(0.6s + var(--i) * 0.18s) both;
+    }
+  }
+  @keyframes sync-on {
+    from {
+      background: transparent;
+      border-color: var(--muted);
+    }
+  }
+  @keyframes sync-show {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes sync-hide {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+</style>
