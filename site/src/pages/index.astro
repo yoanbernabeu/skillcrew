@@ -18,13 +18,16 @@ const steps = [
   {
     who: 'Administrator',
     title: 'Create the registry',
-    text: 'One Git repository with the Claude Code marketplace layout and a skillcrew.yaml. Push it to your Git host.',
+    text: 'One Git repository with the Claude Code marketplace layout and a skillcrew.yaml. Add skills with one command, then push it to your Git host.',
     code: `$ skillcrew registry init --org acme
 Created a new Skillcrew registry.
-  + .claude-plugin/marketplace.json
-  + .github/workflows/validate.yml
-  + plugins/example/skills/hello-world/SKILL.md
-  + skillcrew.yaml`,
+$ skillcrew skill new security:review --status required \\
+    --description "Reviews code for security issues. Use it on every review."
+Created skill security:review.
+  + plugins/security/.claude-plugin/plugin.json
+  + plugins/security/skills/review/SKILL.md
+  ~ .claude-plugin/marketplace.json
+  ~ skillcrew.yaml`,
   },
   {
     who: 'Developer, once',

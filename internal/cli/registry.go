@@ -170,7 +170,11 @@ func (a *App) registryCommand() *cobra.Command {
 			if failed {
 				return errors.New(`the registry does not pass "skillcrew validate" yet; fix the errors above, then run it again`)
 			}
-			a.printf("Edit skillcrew.yaml to set statuses and teams, then commit and push.\n")
+			if res.Converted {
+				a.printf("Edit skillcrew.yaml to set statuses and teams, then commit and push.\n")
+			} else {
+				a.printf("Add skills with \"skillcrew skill new <plugin:skill>\", then commit and push.\n")
+			}
 			return nil
 		},
 	}
@@ -180,5 +184,71 @@ func (a *App) registryCommand() *cobra.Command {
 
 	cmd := group(&cobra.Command{Use: "registry", Short: "Manage a registry repository (for administrators)"})
 	cmd.AddCommand(initCmd)
+	return cmd
+}
+
+func (a *App) skillCommand() *cobra.Command {
+	var opts scaffold.SkillOptions
+	var status string
+	newCmd := &cobra.Command{
+		Use:   "new <plugin:skill> [dir]",
+		Short: "Add a skill to a registry: SKILL.md, plugin and status",
+		Long: "Add a skill to the registry in dir (default: the current directory): create its\n" +
+			"SKILL.md, create the plugin and list it in the marketplace when it is new, and\n" +
+			"set its status in skillcrew.yaml (--status, for a team with --team). Comments\n" +
+			"and layout of skillcrew.yaml are kept. Then write the skill's instructions.",
+		Example: "  skillcrew skill new git:commit-message --description \"Writes commit messages. Use it whenever you commit.\" --status required\n" +
+			"  skillcrew skill new symfony:new-project --description \"...\" --status required --team backend",
+		Args: usage(cobra.RangeArgs(1, 2)),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			dir := "."
+			if len(args) == 2 {
+				dir = args[1]
+			}
+			opts.ID, opts.Status = args[0], registry.Status(status)
+			res, err := scaffold.NewSkill(dir, opts)
+			if err != nil {
+				return err
+			}
+			a.printf("Created skill %s.\n", opts.ID)
+			for _, f := range res.Created {
+				a.printf("  + %s\n", f)
+			}
+			for _, f := range res.Modified {
+				a.printf("  ~ %s\n", f)
+			}
+			for _, n := range res.Notices {
+				a.printf("  - %s\n", n)
+			}
+			org := string(res.OrgStatus)
+			switch {
+			case res.RuleExists:
+				org += ` (already set in skillcrew.yaml)`
+			case opts.Status == "" || opts.Team != "":
+				org += " (the registry default)"
+			}
+			if opts.Team != "" {
+				a.printf("Status: %s for team %s, %s for the organization.\n", opts.Status, opts.Team, org)
+			} else {
+				a.printf("Status: %s for the organization.\n", org)
+			}
+			failed := false
+			for _, i := range res.Issues {
+				a.printf("  %s\n", i)
+				failed = failed || i.Severity == registry.Error
+			}
+			if failed {
+				return errors.New(`the registry does not pass "skillcrew validate"; fix the errors above`)
+			}
+			a.printf("Next: write the instructions in %s, run \"skillcrew validate\", then commit.\n", res.File)
+			return nil
+		},
+	}
+	newCmd.Flags().StringVar(&opts.Description, "description", "", "what the skill does and when to use it (required)")
+	newCmd.Flags().StringVar(&status, "status", "", "status to set: required, recommended, available, deprecated or blocked")
+	newCmd.Flags().StringVar(&opts.Team, "team", "", "set the status for this team (created if needed) instead of the organization")
+
+	cmd := group(&cobra.Command{Use: "skill", Short: "Add skills to a registry repository (for administrators)"})
+	cmd.AddCommand(newCmd)
 	return cmd
 }

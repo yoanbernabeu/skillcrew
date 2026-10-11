@@ -200,6 +200,8 @@ func TestInitNew(t *testing.T) {
 	want := []string{
 		".claude-plugin/marketplace.json",
 		".github/workflows/validate.yml",
+		"AGENTS.md",
+		"CLAUDE.md",
 		"README.md",
 		"plugins/example/.claude-plugin/plugin.json",
 		"plugins/example/skills/hello-world/SKILL.md",
@@ -244,6 +246,18 @@ func TestInitNew(t *testing.T) {
 		if !strings.Contains(readme, s) {
 			t.Errorf("README.md lacks %q", s)
 		}
+	}
+	if !strings.Contains(readme, "skillcrew skill new") {
+		t.Error("README.md should show how to add a skill with skillcrew skill new")
+	}
+	agents := readFile(t, dir, "AGENTS.md")
+	for _, s := range []string{"skillcrew skill new", "skillcrew validate", "marketplace.json", "skillcrew.yaml", "required", "blocked", "teams"} {
+		if !strings.Contains(agents, s) {
+			t.Errorf("AGENTS.md lacks %q", s)
+		}
+	}
+	if got := readFile(t, dir, "CLAUDE.md"); got != "@AGENTS.md\n" {
+		t.Errorf("CLAUDE.md = %q, want it to import AGENTS.md", got)
 	}
 	wf := readFile(t, dir, ".github/workflows/validate.yml")
 	for _, s := range []string{
@@ -292,6 +306,22 @@ func TestInitNewRefusesOverwrite(t *testing.T) {
 	}
 	if after := listFiles(t, dir); !reflect.DeepEqual(before, after) {
 		t.Errorf("directory changed: %v", after)
+	}
+}
+
+func TestInitNewKeepsAgentInstructions(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "CLAUDE.md", "my notes\n")
+	res, err := scaffold.Init(dir, scaffold.Options{Org: "acme"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if readFile(t, dir, "CLAUDE.md") != "my notes\n" || readFile(t, dir, "AGENTS.md") == "" {
+		t.Error("CLAUDE.md must be kept and AGENTS.md written")
+	}
+	notice := strings.Join(res.Notices, "\n")
+	if !strings.Contains(notice, "CLAUDE.md") || !strings.Contains(notice, "@AGENTS.md") {
+		t.Errorf("notices = %v", res.Notices)
 	}
 }
 

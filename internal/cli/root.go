@@ -123,6 +123,7 @@ func (a *App) Command() *cobra.Command {
 		a.doctorCommand(),
 		a.validateCommand(),
 		a.registryCommand(),
+		a.skillCommand(),
 		a.uninstallCommand(),
 		a.versionCommand(),
 	)

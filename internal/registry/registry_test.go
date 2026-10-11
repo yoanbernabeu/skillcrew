@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/yoanbernabeu/skillcrew/internal/registry"
+	"github.com/yoanbernabeu/skillcrew/internal/skill"
 )
 
 func skillMD(name string) *fstest.MapFile {
@@ -544,5 +545,20 @@ func TestLargeGovernanceParsesQuickly(t *testing.T) {
 	}
 	if len(reg.Governance.Skills) != 60000 || len(reg.Governance.Teams["web"].Skills) != 60000 {
 		t.Fatal("rules not parsed")
+	}
+}
+
+// A skill created by "skillcrew skill new" whose instructions were never
+// written is reported, without failing validation.
+func TestUnwrittenSkillIsAWarning(t *testing.T) {
+	f := fixture("org: a\nskills:\n  frontend:review: {install_as: fr}\n")
+	f["plugins/security/skills/secrets/SKILL.md"] = &fstest.MapFile{Data: []byte("---\nname: secrets\ndescription: D.\n---\n\n# Secrets\n\n" + skill.Placeholder + "\nMore text.\n")}
+	reg, err := registry.Load(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	errs, warns := errorsAndWarnings(reg.Validate(f))
+	if errs != "" || !strings.Contains(warns, "security:secrets") || !strings.Contains(warns, "TODO") {
+		t.Fatalf("errors:\n%s\nwarnings:\n%s", errs, warns)
 	}
 }

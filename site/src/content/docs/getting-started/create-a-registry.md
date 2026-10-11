@@ -17,38 +17,58 @@ $ skillcrew registry init --org acme
 Created a new Skillcrew registry.
   + .claude-plugin/marketplace.json
   + .github/workflows/validate.yml
+  + AGENTS.md
+  + CLAUDE.md
   + README.md
   + plugins/example/.claude-plugin/plugin.json
   + plugins/example/skills/hello-world/SKILL.md
   + skillcrew.yaml
-Edit skillcrew.yaml to set statuses and teams, then commit and push.
+Add skills with "skillcrew skill new <plugin:skill>", then commit and push.
 ```
 
-You get a marketplace with one example plugin and skill, a `skillcrew.yaml`, a README for your developers and a GitHub Actions workflow that runs `skillcrew validate` on every pull request.
+You get a marketplace with one example plugin and skill, a `skillcrew.yaml`, a README for your developers, an `AGENTS.md` (imported by `CLAUDE.md`) that tells AI agents how to change the registry, and a GitHub Actions workflow that runs `skillcrew validate` on every pull request.
 
 Already have a Claude Code marketplace? Run the same command inside it: see [Convert a Claude Code marketplace](/docs/guides/convert-a-claude-code-marketplace/).
 
 ## Step 2: Add skills
 
-A skill is a folder with a `SKILL.md` file, inside a plugin:
+```console
+$ skillcrew skill new git:commit-message --status required \
+    --description "Writes commit messages following the team convention. Use it whenever you create a git commit."
+Created skill git:commit-message.
+  + plugins/git/.claude-plugin/plugin.json
+  + plugins/git/skills/commit-message/SKILL.md
+  ~ .claude-plugin/marketplace.json
+  ~ skillcrew.yaml
+Status: required for the organization.
+Next: write the instructions in plugins/git/skills/commit-message/SKILL.md, run "skillcrew validate", then commit.
+```
+
+`skill new` creates the skill folder and its `SKILL.md`, creates the plugin and lists it in `.claude-plugin/marketplace.json` when it is new, and sets the status in `skillcrew.yaml`. Then write the instructions in the `SKILL.md`, by hand or with your AI agent: the generated `AGENTS.md` gives it the rules of the registry.
+
+Skill ids are `plugin:skill`, the notation Claude Code uses. Skill names use lowercase letters, digits and single hyphens. The `description` says what the skill does and when to use it: agents read it to decide when to load the skill. See [`skillcrew skill new`](/docs/reference/cli/#skillcrew-skill-new).
+
+The resulting layout:
 
 ```text
 .claude-plugin/marketplace.json     # lists the plugins
 plugins/
-  security/
+  git/
     .claude-plugin/plugin.json
-    skills/review/SKILL.md          # skill id: security:review
+    skills/commit-message/SKILL.md  # skill id: git:commit-message
 skillcrew.yaml
 ```
 
-1. Create `plugins/<plugin>/skills/<name>/SKILL.md`. The frontmatter needs a `name` equal to the folder name (lowercase letters, digits and single hyphens) and a `description` that says what the skill does and when to use it.
-2. List every new plugin in `.claude-plugin/marketplace.json`, with `"source": "./plugins/<plugin>"`.
-
-Skill ids are `plugin:skill`, the notation Claude Code uses: the skill above is `security:review`.
-
 ## Step 3: Set statuses and teams
 
-Edit `skillcrew.yaml`:
+`--status` sets a status for the whole organization; add `--team` to set it for one team:
+
+```sh
+skillcrew skill new symfony:new-project --status required --team backend \
+  --description "Creates a new Symfony project following the team standards. Use it when the user wants to start a new Symfony application."
+```
+
+`skillcrew.yaml` then holds:
 
 ```yaml
 org: acme
@@ -56,22 +76,21 @@ default: available                 # status of skills not listed below
 
 skills:
   example:hello-world: recommended # plugin:skill, as in Claude Code
-  # security:review: required
-  # misc:risky: blocked            # removed from every machine at the next sync
+  git:commit-message: required
 
 teams:
   backend:
     skills:
-      example:hello-world: required
+      symfony:new-project: required
 ```
 
-Each skill is `required`, `recommended`, `available`, `deprecated` or `blocked`, for the whole organization and per team. See [Statuses](/docs/concepts/statuses/) and the [skillcrew.yaml reference](/docs/reference/skillcrew-yaml/).
+Change statuses and teams later by editing `skillcrew.yaml`. Each skill is `required`, `recommended`, `available`, `deprecated` or `blocked`, for the whole organization and per team. See [Statuses](/docs/concepts/statuses/) and the [skillcrew.yaml reference](/docs/reference/skillcrew-yaml/).
 
 ## Step 4: Validate
 
 ```console
 $ skillcrew validate
-Registry acme is valid: 6 skills.
+Registry acme is valid: 3 skills.
 ```
 
 `validate` checks that every id exists under `plugins/`, that skill names do not collide, that team rules do not soften organization rules, and that pins exist. Errors make the command fail.

@@ -27,6 +27,7 @@ skillcrew <command> [arguments] [flags]
 | `skillcrew doctor` | Check hooks, timer, registry and installed skills |
 | `skillcrew validate [dir]` | Validate a registry (CI) |
 | `skillcrew registry init [dir]` | Create a registry or convert a Claude Code marketplace |
+| `skillcrew skill new <plugin:skill> [dir]` | Add a skill to a registry: `SKILL.md`, plugin and status |
 | `skillcrew uninstall` | Remove everything Skillcrew installed |
 | `skillcrew completion <shell>` | Shell completion script for bash, zsh, fish or powershell |
 
@@ -247,13 +248,49 @@ Uninstall Skillcrew? [y/N]
 skillcrew registry init [dir] [flags]
 ```
 
-In a Claude Code marketplace repository, generate `skillcrew.yaml` listing every skill as `available` (colliding names get an `install_as` alias, invalid skills are blocked) and report what `skillcrew validate` finds. Anywhere else, create a new registry with an example skill and a CI workflow.
+In a Claude Code marketplace repository, generate `skillcrew.yaml` listing every skill as `available` (colliding names get an `install_as` alias, invalid skills are blocked) and report what `skillcrew validate` finds. Anywhere else, create a new registry with an example skill, a CI workflow, a README for developers and an `AGENTS.md` (imported by `CLAUDE.md`) that tells AI agents how to change the registry. An existing `AGENTS.md` or `CLAUDE.md` is kept.
 
 | Flag | Effect |
 |---|---|
 | `--org <name>` | Organization name |
 | `--owner <name>` | Marketplace owner name (new registries) |
 | `--force` | Overwrite an existing `skillcrew.yaml` |
+
+### skillcrew skill new
+
+```text
+skillcrew skill new <plugin:skill> [dir] --description <text> [--status <status>] [--team <team>]
+```
+
+Add a skill to the registry in `dir` (the current directory by default):
+
+- create `plugins/<plugin>/skills/<skill>/SKILL.md` with its frontmatter and a placeholder for the instructions;
+- when the plugin is new, create `plugins/<plugin>/.claude-plugin/plugin.json` and list the plugin in `.claude-plugin/marketplace.json`;
+- with `--status`, add the rule to `skillcrew.yaml`, for the organization or, with `--team`, for that team (created if needed).
+
+Only the new lines change: comments, blank lines and layout of `skillcrew.yaml` and `marketplace.json` are kept, so the pull request shows just the addition.
+
+Everything is checked before anything is written: an invalid name, a skill that exists, a bare name already used by another skill, a team rule that softens an organization rule, or a rule already in `skillcrew.yaml` leaves the registry untouched.
+
+| Flag | Effect |
+|---|---|
+| `--description <text>` | Required. What the skill does and when to use it: agents read it to decide when to load the skill |
+| `--status <status>` | `required`, `recommended`, `available`, `deprecated` or `blocked`; without it, the skill gets the registry `default` |
+| `--team <team>` | Write the status for this team instead of the organization |
+
+```console
+$ skillcrew skill new symfony:new-project --description "Creates a new Symfony project following the team standards. Use it when the user wants to start a new Symfony application." --status required --team backend
+Created skill symfony:new-project.
+  + plugins/symfony/.claude-plugin/plugin.json
+  + plugins/symfony/skills/new-project/SKILL.md
+  ~ .claude-plugin/marketplace.json
+  ~ skillcrew.yaml
+  - team "backend" created in skillcrew.yaml
+Status: required for team backend, available (the registry default) for the organization.
+Next: write the instructions in plugins/symfony/skills/new-project/SKILL.md, run "skillcrew validate", then commit.
+```
+
+`skillcrew validate` warns about a `SKILL.md` that still holds the placeholder.
 
 ### skillcrew validate
 

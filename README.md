@@ -74,11 +74,18 @@ shasum -a 256 --ignore-missing -c checksums.txt   # then check your archive agai
 ```sh
 mkdir acme-skills && cd acme-skills && git init
 skillcrew registry init --org acme        # or run it inside an existing Claude Code marketplace
-git add -A && git commit -m "Create the skills registry"
-gh repo create acme/skills --private --source . --push
 ```
 
-`registry init` creates a marketplace with an example plugin and skill, a `skillcrew.yaml` and a CI workflow. Add skills under `plugins/<plugin>/skills/<skill>/SKILL.md`, list the plugins in `.claude-plugin/marketplace.json`, then set their status in `skillcrew.yaml`:
+`registry init` creates a marketplace with an example plugin and skill, a `skillcrew.yaml`, a CI workflow and an `AGENTS.md` that tells AI agents how to change the registry. Add skills with one command:
+
+```sh
+skillcrew skill new git:commit-message --status required \
+  --description "Writes commit messages following the team convention. Use it whenever you create a git commit."
+skillcrew skill new symfony:new-project --status required --team backend \
+  --description "Creates a new Symfony project following the team standards. Use it when the user wants to start a new Symfony application."
+```
+
+`skill new` creates `plugins/<plugin>/skills/<skill>/SKILL.md`, creates and lists the plugin in `.claude-plugin/marketplace.json` when it is new, and sets the status in `skillcrew.yaml`. Write the instructions in the `SKILL.md`, by hand or with your agent. Statuses and teams live in `skillcrew.yaml`:
 
 ```yaml
 org: acme
@@ -86,13 +93,21 @@ default: available                 # status of skills not listed below
 
 skills:
   example:hello-world: recommended # plugin:skill, as in Claude Code
-  # security:review: required
+  git:commit-message: required
   # misc:risky: blocked            # removed from every machine at the next sync
 
 teams:
   backend:
     skills:
-      example:hello-world: required
+      symfony:new-project: required
+```
+
+Validate, then publish:
+
+```sh
+skillcrew validate
+git add -A && git commit -m "Create the skills registry"
+gh repo create acme/skills --private --source . --push
 ```
 
 `skillcrew validate` checks the registry: every id must exist under `plugins/`, skill names must not collide, pins must exist (and `ref` must be a tag), and plugin directories missing from `marketplace.json` are reported. The generated workflow runs it on every pull request. Converting an existing marketplace gives colliding skills an `install_as` alias, blocks skills that fail validation, and prints what is left to fix. See the [configuration reference](docs/configuration.md).
@@ -121,6 +136,7 @@ That's it. Skills now follow the registry; start a new agent session to load the
 | `skillcrew doctor` | Check hooks, timer, registry and installed skills |
 | `skillcrew validate [dir]` | Validate a registry (CI) |
 | `skillcrew registry init [dir]` | Create a registry or convert a Claude Code marketplace |
+| `skillcrew skill new <plugin:skill> [dir]` | Add a skill to a registry: `SKILL.md`, plugin and status |
 | `skillcrew uninstall` | Remove everything Skillcrew installed and restore the personal skills it replaced |
 
 `<skill>` is a `plugin:skill` id or an installed name. `status`, `list`, `team list`, `sync`, `doctor` and `validate` accept `--json`.

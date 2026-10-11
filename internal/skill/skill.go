@@ -25,9 +25,14 @@ import (
 // FileName is the entry point of every skill directory.
 const FileName = "SKILL.md"
 
+// Placeholder is the line "skillcrew skill new" writes where the
+// instructions of a new skill go.
+const Placeholder = "TODO: write the instructions the agent follows when it uses this skill."
+
 const (
-	maxNameLength        = 64
-	maxDescriptionLength = 1024
+	maxNameLength = 64
+	// MaxDescriptionLength is the specification limit on descriptions, in characters.
+	MaxDescriptionLength = 1024
 )
 
 var (
@@ -110,8 +115,8 @@ func Validate(fsys fs.FS, dir string) []error {
 	} else if fm.Name != path.Base(dir) {
 		errs = append(errs, fmt.Errorf("%s: name %q must match the directory name", dir, fm.Name))
 	}
-	if n := utf8.RuneCountInString(fm.Description); n == 0 || n > maxDescriptionLength {
-		errs = append(errs, fmt.Errorf("%s: description must be 1 to %d characters", dir, maxDescriptionLength))
+	if n := utf8.RuneCountInString(fm.Description); n == 0 || n > MaxDescriptionLength {
+		errs = append(errs, fmt.Errorf("%s: description must be 1 to %d characters", dir, MaxDescriptionLength))
 	}
 	return errs
 }

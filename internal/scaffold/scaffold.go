@@ -17,6 +17,8 @@ import (
 	"strings"
 	"syscall"
 
+	"gopkg.in/yaml.v3"
+
 	"github.com/yoanbernabeu/skillcrew/internal/registry"
 	"github.com/yoanbernabeu/skillcrew/internal/skill"
 )
@@ -230,7 +232,23 @@ func create(dir string, opts Options) (Result, error) {
 		"plugins/example/skills/hello-world/SKILL.md": helloWorldSkill,
 		registry.GovernanceFile:                       governance(org, map[string]rule{"example:hello-world": {status: registry.Recommended}}),
 		"README.md":                                   fmt.Sprintf(readmeTemplate, org),
+		"AGENTS.md":                                   fmt.Sprintf(agentsTemplate, org),
+		"CLAUDE.md":                                   "@AGENTS.md\n",
 		".github/workflows/validate.yml":              workflow(opts.Version),
+	}
+	// Instructions for AI agents may already be there: keep them.
+	for _, kept := range []struct{ name, notice string }{
+		{"AGENTS.md", "AGENTS.md already exists and is kept; add the rules of the registry for AI agents to it (see https://skillcrew.yoandev.co/docs/getting-started/create-a-registry/)"},
+		{"CLAUDE.md", `CLAUDE.md already exists and is kept; add a line "@AGENTS.md" to it so Claude Code reads the rules of the registry`},
+	} {
+		exists, err := checkPath(dir, kept.name)
+		if err != nil {
+			return Result{}, err
+		}
+		if exists {
+			delete(files, kept.name)
+			notices = append(notices, kept.notice)
+		}
 	}
 	names := slices.Sorted(maps.Keys(files))
 	for _, name := range names {
@@ -421,7 +439,11 @@ func quote(s string) string {
 		safe = safe && (r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || strings.ContainsRune("-_.:", r))
 	}
 	if safe && !strings.HasSuffix(s, ":") && !strings.HasPrefix(s, "-") {
-		return s
+		// Words such as null, true or 1 would not read as strings.
+		var v any
+		if yaml.Unmarshal([]byte(s), &v) == nil && v == s {
+			return s
+		}
 	}
 	data, _ := json.Marshal(s) // JSON strings are valid YAML double-quoted scalars
 	return string(data)
@@ -500,11 +522,15 @@ them up to date.
 
 ## Add a skill
 
-1. Create ` + "`plugins/<plugin>/skills/<name>/SKILL.md`" + ` (see
-   ` + "`plugins/example/skills/hello-world`" + `). Declare new plugins in
-   ` + "`.claude-plugin/marketplace.json`" + `.
-2. Set its status in ` + "`skillcrew.yaml`" + ` (skill ids are ` + "`plugin:skill`" + `).
-3. Open a pull request: CI runs ` + "`skillcrew validate`" + `.
+` + "```sh" + `
+skillcrew skill new <plugin>:<skill> --description "What it does and when to use it." --status recommended
+` + "```" + `
+
+The command creates the ` + "`SKILL.md`" + `, creates and lists the plugin when it
+is new, and sets the status in ` + "`skillcrew.yaml`" + ` (` + "`--team <team>`" + ` for a
+team rule). Write the instructions in the generated ` + "`SKILL.md`" + `, then open a
+pull request: CI runs ` + "`skillcrew validate`" + `. ` + "`AGENTS.md`" + ` gives AI agents the
+same rules.
 
 ## Statuses
 
@@ -517,6 +543,70 @@ them up to date.
 | ` + "`blocked`" + ` | Removed and never installed. |
 
 Skills not listed in ` + "`skillcrew.yaml`" + ` get the ` + "`default`" + ` status.
+`
+
+// agentsTemplate is the AGENTS.md of a new registry: the rules an AI agent
+// follows when it changes the registry. %s is the organization.
+const agentsTemplate = `# AGENTS.md
+
+This repository is the skill registry of the %s organization, managed with
+Skillcrew (https://github.com/yoanbernabeu/skillcrew). Every skill merged here
+reaches the machine of every developer, in every AI coding agent: treat changes
+like production code.
+
+## Layout
+
+- ` + "`plugins/<plugin>/skills/<skill>/SKILL.md`" + `: one skill; its id is ` + "`<plugin>:<skill>`" + `.
+- ` + "`.claude-plugin/marketplace.json`" + `: lists the plugins (the repository is also a
+  Claude Code marketplace).
+- ` + "`skillcrew.yaml`" + `: governance, the status of each skill for the organization and
+  for each team.
+
+## Add a skill
+
+1. Create it with the CLI, never by hand:
+
+   ` + "```sh" + `
+   skillcrew skill new <plugin>:<skill> --description "<what it does and when to use it>" [--status <status>] [--team <team>]
+   ` + "```" + `
+
+   It creates the ` + "`SKILL.md`" + `, creates the plugin and lists it in
+   ` + "`.claude-plugin/marketplace.json`" + ` when it is new, and sets the status in
+   ` + "`skillcrew.yaml`" + `. Ask which status and team to use if you were not told.
+2. Write the instructions in the generated ` + "`SKILL.md`" + `, replacing the TODO. If you
+   have a skill for writing skills, use it.
+3. Run ` + "`skillcrew validate`" + ` and fix every error.
+
+## Change a skill
+
+- Edit its ` + "`SKILL.md`" + ` and files. Keep the frontmatter ` + "`name`" + ` equal to the
+  directory name, and a ` + "`description`" + ` that says what the skill does and when to use it.
+- Never rename or move a skill directory: its id would change. Create the new
+  skill, then mark the old one ` + "`deprecated`" + ` with ` + "`message`" + ` and ` + "`replaced_by`" + `.
+
+## Statuses
+
+Set in ` + "`skillcrew.yaml`" + `, under ` + "`skills`" + ` (organization) or ` + "`teams.<team>.skills`" + `:
+
+- ` + "`required`" + `: installed for everyone concerned, cannot be disabled.
+- ` + "`recommended`" + `: installed by default, can be disabled.
+- ` + "`available`" + `: installed on demand. Skills not listed get the ` + "`default`" + ` status.
+- ` + "`deprecated`" + `: kept where installed, never installed on new machines.
+- ` + "`blocked`" + `: removed from every machine at the next sync.
+
+A team can harden an organization status, never soften it, and cannot allow a
+skill the organization blocks.
+
+## Rules
+
+- Do not edit ` + "`.claude-plugin/marketplace.json`" + ` to add a skill: ` + "`skillcrew skill new`" + ` does it.
+- Skill names use lowercase letters, digits and single hyphens, and must be
+  unique across plugins: skills are installed under their bare name.
+- Only skills are distributed: commands, agents, hooks and MCP servers of a
+  plugin are ignored.
+- Scripts bundled with a skill run on developer machines when agents use the
+  skill: keep them small and easy to review.
+- Run ` + "`skillcrew validate`" + ` before every commit; CI runs it on every pull request.
 `
 
 // workflow returns the registry CI workflow, pinning skillcrew to version

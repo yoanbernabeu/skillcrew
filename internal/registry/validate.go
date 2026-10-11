@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/fs"
 	"maps"
+	"path"
 	"regexp"
 	"slices"
 	"strings"
@@ -47,6 +48,9 @@ func (r *Registry) Validate(fsys fs.FS) []Issue {
 		}
 		for _, err := range skill.Validate(fsys, s.Dir) {
 			v.add(sev, "%s: %v%s", s.ID, err, note)
+		}
+		if note == "" {
+			v.checkWritten(fsys, s)
 		}
 		v.checkPaths(fsys, s)
 	}
@@ -150,6 +154,15 @@ func (v *validator) checkCollisions() {
 // blockedEverywhere reports whether no team can make the skill installable.
 func (v *validator) blockedEverywhere(id string) bool {
 	return v.reg.Governance.OrgRule(id).Status == Blocked
+}
+
+// checkWritten warns about a skill whose SKILL.md still holds the
+// placeholder written by "skillcrew skill new".
+func (v *validator) checkWritten(fsys fs.FS, s Skill) {
+	content, err := fs.ReadFile(fsys, path.Join(s.Dir, skill.FileName))
+	if err == nil && strings.Contains(string(content), skill.Placeholder) {
+		v.add(Warning, "%s: %s still holds the TODO written by \"skillcrew skill new\"; write the instructions", s.ID, path.Join(s.Dir, skill.FileName))
+	}
 }
 
 // checkPaths rejects files whose names differ only by case or Unicode
