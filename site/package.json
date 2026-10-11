@@ -30,7 +30,7 @@
     "satori": "0.47.1",
     "satteri": "0.10.5",
     "shiki": "4.5.0",
-    "typescript": "6.0.3"
+    "typescript": "7.0.2"
   },
   "engines": {
     "node": ">=22.12.0"
