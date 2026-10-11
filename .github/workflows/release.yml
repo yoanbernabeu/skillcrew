@@ -33,6 +33,7 @@ jobs:
   release:
     needs: test
     runs-on: ubuntu-latest
+    environment: release # holds GH_PAT; deployable from v* tags only
     permissions:
       contents: write # create the GitHub release and upload assets
       id-token: write # keyless cosign signing of checksums.txt
