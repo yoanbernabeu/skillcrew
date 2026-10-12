@@ -86,7 +86,7 @@ func pinIssues(ctx context.Context, dir string, reg *registry.Registry) []regist
 		return nil
 	}
 	if shallow, _ := repo.Git(ctx, "rev-parse", "--is-shallow-repository"); shallow == "true" {
-		return []registry.Issue{{Severity: registry.Warning, Message: "shallow clone: pinned tags and commits were not checked; fetch the full history (actions/checkout: fetch-depth: 0)"}}
+		return []registry.Issue{{Severity: registry.Warning, Message: "shallow clone: pinned tags and commits were not checked; fetch the full history (GitHub Actions: fetch-depth: 0; GitLab CI: GIT_DEPTH: \"0\")"}}
 	}
 	var issues []registry.Issue
 	fail := func(id, format string, args ...any) {
