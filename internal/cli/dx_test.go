@@ -45,6 +45,21 @@ func TestValidateChecksPinsInGit(t *testing.T) {
 	}
 }
 
+func TestValidateShallowCloneNamesEveryCI(t *testing.T) {
+	e := newEnv(t)
+	e.origin.Git("tag", "v1")
+	e.pin("ref: v1")
+	e.origin.Commit("pin")
+	dir := filepath.Join(t.TempDir(), "clone")
+	e.origin.Git("clone", "--quiet", "--depth", "1", "file://"+e.origin.Dir, dir)
+	out := e.mustRun("validate", dir)
+	for _, s := range []string{"shallow clone", "fetch-depth: 0", `GIT_DEPTH: "0"`} {
+		if !strings.Contains(out, s) {
+			t.Errorf("output lacks %q:\n%s", s, out)
+		}
+	}
+}
+
 func TestValidatePinsOutsideGit(t *testing.T) {
 	e := newEnv(t)
 	dir := t.TempDir()
@@ -488,4 +503,17 @@ func TestInitStoresAbsoluteLocalPaths(t *testing.T) {
 	}
 	e.now = e.now.Add(time.Hour)
 	e.mustRun("sync")
+}
+
+func TestRegistryInitCI(t *testing.T) {
+	e := newEnv(t)
+	dir := filepath.Join(t.TempDir(), "acme-skills")
+	out := e.mustRun("registry", "init", dir, "--ci", "gitlab")
+	if !strings.Contains(out, "+ .gitlab-ci.yml") || strings.Contains(out, ".github") {
+		t.Fatalf("output:\n%s", out)
+	}
+	out, err := e.run("registry", "init", t.TempDir(), "--ci", "jenkins")
+	if err == nil || !strings.Contains(out+err.Error(), "gitlab") {
+		t.Fatalf("an unknown CI must be refused, got %v\n%s", err, out)
+	}
 }

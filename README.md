@@ -76,7 +76,7 @@ mkdir acme-skills && cd acme-skills && git init
 skillcrew registry init --org acme        # or run it inside an existing Claude Code marketplace
 ```
 
-`registry init` creates a marketplace with an example plugin and skill, a `skillcrew.yaml`, a CI workflow and an `AGENTS.md` that tells AI agents how to change the registry. Add skills with one command:
+`registry init` creates a marketplace with an example plugin and skill, a `skillcrew.yaml`, a CI configuration (GitHub Actions by default, `--ci gitlab` for GitLab CI, `--ci none` for none) and an `AGENTS.md` that tells AI agents how to change the registry. Add skills with one command:
 
 ```sh
 skillcrew skill new git:commit-message --status required \

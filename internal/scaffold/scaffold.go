@@ -29,9 +29,34 @@ type Options struct {
 	Owner string // marketplace owner name (used only when creating a marketplace); default = Org
 	Force bool   // overwrite an existing skillcrew.yaml
 	// Version is the running skillcrew version. When it is a release
-	// (vX.Y.Z), the generated CI workflow pins it; otherwise it uses @latest.
+	// (vX.Y.Z), the generated CI pins it; otherwise it uses @latest.
 	Version string
+	// CI is the CI configuration written in a new registry: CIGitHub (the
+	// default when empty), CIGitLab or CINone.
+	CI string
 }
+
+// CI systems Init can write a configuration for.
+const (
+	CIGitHub = "github"
+	CIGitLab = "gitlab"
+	CINone   = "none"
+)
+
+// forge holds what differs between the CI systems of a new registry.
+type forge struct {
+	file    string // CI configuration path, empty for none
+	request string // what the forge calls a proposed change
+}
+
+var forges = map[string]forge{
+	CIGitHub: {".github/workflows/validate.yml", "pull request"},
+	CIGitLab: {".gitlab-ci.yml", "merge request"},
+	CINone:   {"", "pull request"},
+}
+
+// ciDoc documents CI for registries that Init writes no CI configuration for.
+const ciDoc = "https://skillcrew.yoandev.co/docs/guides/ci/"
 
 // Result lists what Init did.
 type Result struct {
@@ -57,6 +82,9 @@ var pluginPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
 // it fails if any existing path it would write to, or any directory on the
 // way, is one.
 func Init(dir string, opts Options) (Result, error) {
+	if _, ok := forges[opts.CI]; opts.CI != "" && !ok {
+		return Result{}, fmt.Errorf("unknown CI %q: use %s, %s or %s", opts.CI, CIGitHub, CIGitLab, CINone)
+	}
 	exists, err := checkPath(dir, registry.GovernanceFile)
 	if err != nil {
 		return Result{}, err
@@ -77,6 +105,9 @@ func convert(dir string, opts Options) (Result, error) {
 		return Result{}, err
 	}
 	org, notices := orgName(opts.Org, reg.Name, "the marketplace name", dir)
+	if opts.CI != "" {
+		notices = append(notices, "--ci only applies to new registries; no CI file was written (see "+ciDoc+")")
+	}
 	rules := map[string]rule{}
 	warnings := append([]string(nil), reg.Warnings...)
 	var valid []registry.Skill
@@ -210,6 +241,11 @@ func oneLine(s string) string { return strings.Join(strings.Fields(s), " ") }
 
 func create(dir string, opts Options) (Result, error) {
 	org, notices := orgName(opts.Org, "", "", dir)
+	ci := opts.CI
+	if ci == "" {
+		ci = CIGitHub
+	}
+	f := forges[ci]
 	owner := opts.Owner
 	if owner == "" {
 		owner = org
@@ -229,12 +265,17 @@ func create(dir string, opts Options) (Result, error) {
 			"description": exampleDescription,
 			"version":     "0.1.0",
 		}),
-		"plugins/example/skills/hello-world/SKILL.md": helloWorldSkill,
+		"plugins/example/skills/hello-world/SKILL.md": fmt.Sprintf(helloWorldSkill, f.request),
 		registry.GovernanceFile:                       governance(org, map[string]rule{"example:hello-world": {status: registry.Recommended}}),
-		"README.md":                                   fmt.Sprintf(readmeTemplate, org),
-		"AGENTS.md":                                   fmt.Sprintf(agentsTemplate, org),
+		"README.md":                                   fmt.Sprintf(readmeTemplate, org, f.request, ciRuns(ci, ": CI runs `skillcrew validate`")),
+		"AGENTS.md":                                   fmt.Sprintf(agentsTemplate, org, ciRuns(ci, "; CI runs it on every "+f.request)),
 		"CLAUDE.md":                                   "@AGENTS.md\n",
-		".github/workflows/validate.yml":              workflow(opts.Version),
+	}
+	switch ci {
+	case CIGitHub:
+		files[f.file] = fmt.Sprintf(githubWorkflow, skillcrewRef(opts.Version))
+	case CIGitLab:
+		files[f.file] = fmt.Sprintf(gitlabCI, skillcrewRef(opts.Version))
 	}
 	// Instructions for AI agents may already be there: keep them.
 	for _, kept := range []struct{ name, notice string }{
@@ -498,12 +539,12 @@ When it is used:
 
 1. Explain that a skill is a folder under ` + "`plugins/<plugin>/skills/<name>/`" + ` with a ` + "`SKILL.md`" + ` file.
 2. Point out that the frontmatter needs a ` + "`name`" + ` (equal to the folder name, lowercase letters, digits and dashes) and a ` + "`description`" + ` saying what the skill does and when to use it.
-3. Suggest opening a pull request on the registry to add or change a skill.
+3. Suggest opening a %s on the registry to add or change a skill.
 
 Replace this skill with a real one once your registry is set up.
 `
 
-const readmeTemplate = `# Skill registry: %s
+const readmeTemplate = `# Skill registry: %[1]s
 
 This repository is the skill registry of our organization, managed with
 [Skillcrew](https://github.com/yoanbernabeu/skillcrew). It is also a regular
@@ -529,8 +570,7 @@ skillcrew skill new <plugin>:<skill> --description "What it does and when to use
 The command creates the ` + "`SKILL.md`" + `, creates and lists the plugin when it
 is new, and sets the status in ` + "`skillcrew.yaml`" + ` (` + "`--team <team>`" + ` for a
 team rule). Write the instructions in the generated ` + "`SKILL.md`" + `, then open a
-pull request: CI runs ` + "`skillcrew validate`" + `. ` + "`AGENTS.md`" + ` gives AI agents the
-same rules.
+%[2]s%[3]s. ` + "`AGENTS.md`" + ` gives AI agents the same rules.
 
 ## Statuses
 
@@ -546,7 +586,8 @@ Skills not listed in ` + "`skillcrew.yaml`" + ` get the ` + "`default`" + ` stat
 `
 
 // agentsTemplate is the AGENTS.md of a new registry: the rules an AI agent
-// follows when it changes the registry. %s is the organization.
+// follows when it changes the registry. The arguments are the organization
+// and what CI does, if any (see ciRuns).
 const agentsTemplate = `# AGENTS.md
 
 This repository is the skill registry of the %s organization, managed with
@@ -606,22 +647,30 @@ skill the organization blocks.
   plugin are ignored.
 - Scripts bundled with a skill run on developer machines when agents use the
   skill: keep them small and easy to review.
-- Run ` + "`skillcrew validate`" + ` before every commit; CI runs it on every pull request.
+- Run ` + "`skillcrew validate`" + ` before every commit%s.
 `
 
-// workflow returns the registry CI workflow, pinning skillcrew to version
-// when it is a release.
-func workflow(version string) string {
-	ref := "latest"
-	if releasePattern.MatchString(version) {
-		ref = version
+// ciRuns returns text, the end of a sentence saying when CI runs validate,
+// or nothing when the registry has no CI.
+func ciRuns(ci, text string) string {
+	if ci == CINone {
+		return ""
 	}
-	return fmt.Sprintf(validateWorkflow, ref)
+	return text
 }
 
-// validateWorkflow is the registry CI workflow; %s is the skillcrew version.
-// Actions are pinned to commit SHAs; Dependabot can keep them up to date.
-const validateWorkflow = `name: Validate skills
+// skillcrewRef returns the skillcrew version the generated CI runs: version
+// when it is a release, latest otherwise.
+func skillcrewRef(version string) string {
+	if releasePattern.MatchString(version) {
+		return version
+	}
+	return "latest"
+}
+
+// githubWorkflow is the GitHub Actions workflow of a new registry; %s is the
+// skillcrew version. Actions are pinned to commit SHAs; Dependabot can keep them up to date.
+const githubWorkflow = `name: Validate skills
 
 on:
   pull_request:
@@ -643,4 +692,19 @@ jobs:
         with:
           go-version: 'stable'
       - run: go run github.com/yoanbernabeu/skillcrew/cmd/skillcrew@%s validate
+`
+
+// gitlabCI is the GitLab CI configuration of a new registry; %s is the
+// skillcrew version. The image is pinned by digest (the tag only documents
+// it); Renovate can keep it up to date. It ships git, which validate needs to
+// check pins.
+const gitlabCI = `validate:
+  image: golang:1.27@sha256:e432b43af23a9328d56a7c499be0476810aa344acbcf65fc7c455d4ff5a40602
+  variables:
+    GIT_DEPTH: "0" # tags and history, to check pinned skills
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  script:
+    - go run github.com/yoanbernabeu/skillcrew/cmd/skillcrew@%s validate
 `

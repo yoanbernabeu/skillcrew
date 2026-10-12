@@ -28,6 +28,8 @@ Add skills with "skillcrew skill new <plugin:skill>", then commit and push.
 
 You get a marketplace with one example plugin and skill, a `skillcrew.yaml`, a README for your developers, an `AGENTS.md` (imported by `CLAUDE.md`) that tells AI agents how to change the registry, and a GitHub Actions workflow that runs `skillcrew validate` on every pull request.
 
+Hosting the registry on GitLab? Add `--ci gitlab` to get a `.gitlab-ci.yml` instead, which runs `skillcrew validate` on every merge request (`--ci none` writes no CI file). See [Validate in CI](/docs/guides/ci/).
+
 Already have a Claude Code marketplace? Run the same command inside it: see [Convert a Claude Code marketplace](/docs/guides/convert-a-claude-code-marketplace/).
 
 ## Step 2: Add skills
