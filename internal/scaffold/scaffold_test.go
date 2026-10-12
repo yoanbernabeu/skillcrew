@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -677,5 +678,138 @@ func TestInitRefusalsGiveANextStep(t *testing.T) {
 	writeFile(t, dir, "README.md", "mine\n")
 	if _, err := scaffold.Init(dir, scaffold.Options{}); err == nil || !strings.Contains(err.Error(), "empty directory") {
 		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestInitNewCI(t *testing.T) {
+	for _, tc := range []struct {
+		ci      string
+		file    string // CI file created, if any
+		request string // what the README calls a change
+		runs    bool   // the README and AGENTS.md say CI runs validate
+	}{
+		{"", ".github/workflows/validate.yml", "pull request", true},
+		{"github", ".github/workflows/validate.yml", "pull request", true},
+		{"gitlab", ".gitlab-ci.yml", "merge request", true},
+		{"none", "", "pull request", false},
+	} {
+		t.Run(tc.ci, func(t *testing.T) {
+			dir := t.TempDir()
+			res, err := scaffold.Init(dir, scaffold.Options{CI: tc.ci})
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, f := range []string{".github/workflows/validate.yml", ".gitlab-ci.yml"} {
+				if created := slices.Contains(res.Created, f); created != (f == tc.file) {
+					t.Errorf("%s created = %v", f, created)
+				}
+				if _, err := os.Lstat(filepath.Join(dir, filepath.FromSlash(f))); (err == nil) != (f == tc.file) {
+					t.Errorf("%s on disk: %v", f, err)
+				}
+			}
+			assertValid(t, dir)
+			readme := readFile(t, dir, "README.md")
+			agents := readFile(t, dir, "AGENTS.md")
+			skill := readFile(t, dir, "plugins/example/skills/hello-world/SKILL.md")
+			for name, s := range map[string]string{"README.md": readme, "AGENTS.md": agents, "SKILL.md": skill} {
+				if !strings.Contains(s, tc.request) && (name != "AGENTS.md" || tc.runs) {
+					t.Errorf("%s lacks %q", name, tc.request)
+				}
+				if other := map[string]string{"pull request": "merge request", "merge request": "pull request"}[tc.request]; strings.Contains(s, other) {
+					t.Errorf("%s mentions %q", name, other)
+				}
+			}
+			for name, s := range map[string]string{"README.md": readme, "AGENTS.md": agents} {
+				if runs := strings.Contains(s, "CI runs"); runs != tc.runs {
+					t.Errorf("%s says CI runs validate: %v, want %v", name, runs, tc.runs)
+				}
+			}
+		})
+	}
+}
+
+func TestInitNewGitLabCI(t *testing.T) {
+	dir := t.TempDir()
+	if _, err := scaffold.Init(dir, scaffold.Options{CI: "gitlab"}); err != nil {
+		t.Fatal(err)
+	}
+	ci := readFile(t, dir, ".gitlab-ci.yml")
+	for _, s := range []string{
+		`GIT_DEPTH: "0"`,
+		`$CI_PIPELINE_SOURCE == "merge_request_event"`,
+		"$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH",
+		"go run github.com/yoanbernabeu/skillcrew/cmd/skillcrew@latest validate",
+	} {
+		if !strings.Contains(ci, s) {
+			t.Errorf(".gitlab-ci.yml lacks %q:\n%s", s, ci)
+		}
+	}
+	// The image is pinned by digest, as actions are pinned by commit SHA.
+	if !regexp.MustCompile(`(?m)^  image: golang:\d+\.\d+@sha256:[0-9a-f]{64}$`).MatchString(ci) {
+		t.Errorf("image not pinned by digest:\n%s", ci)
+	}
+}
+
+func TestInitNewCIVersion(t *testing.T) {
+	for ci, file := range map[string]string{"github": ".github/workflows/validate.yml", "gitlab": ".gitlab-ci.yml"} {
+		for version, want := range map[string]string{"dev": "@latest validate", "v1.2.3": "@v1.2.3 validate"} {
+			dir := t.TempDir()
+			if _, err := scaffold.Init(dir, scaffold.Options{CI: ci, Version: version}); err != nil {
+				t.Fatal(err)
+			}
+			if got := readFile(t, dir, file); !strings.Contains(got, "/cmd/skillcrew"+want) {
+				t.Errorf("%s, version %q: %s lacks %q:\n%s", ci, version, file, want, got)
+			}
+		}
+	}
+}
+
+func TestInitUnknownCI(t *testing.T) {
+	for _, mode := range []string{"new", "convert"} {
+		dir := t.TempDir()
+		if mode == "convert" {
+			writeFile(t, dir, ".claude-plugin/marketplace.json", `{"name":"acme","plugins":[]}`)
+		}
+		before := listFiles(t, dir)
+		_, err := scaffold.Init(dir, scaffold.Options{CI: "jenkins"})
+		if err == nil {
+			t.Fatalf("%s: unknown CI accepted", mode)
+		}
+		for _, s := range []string{"jenkins", "github", "gitlab", "none"} {
+			if !strings.Contains(err.Error(), s) {
+				t.Errorf("%s: err = %v, want a mention of %q", mode, err, s)
+			}
+		}
+		if after := listFiles(t, dir); !reflect.DeepEqual(before, after) {
+			t.Errorf("%s: directory changed: %v", mode, after)
+		}
+	}
+}
+
+func TestInitNewRefusesToOverwriteGitLabCI(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, ".gitlab-ci.yml", "mine\n")
+	_, err := scaffold.Init(dir, scaffold.Options{CI: "gitlab"})
+	if err == nil || !strings.Contains(err.Error(), ".gitlab-ci.yml") {
+		t.Fatalf("err = %v, want one naming .gitlab-ci.yml", err)
+	}
+	if readFile(t, dir, ".gitlab-ci.yml") != "mine\n" {
+		t.Error(".gitlab-ci.yml was overwritten")
+	}
+}
+
+func TestInitConvertIgnoresCI(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, ".claude-plugin/marketplace.json", `{"name":"acme","plugins":[{"name":"p","source":"./plugins/p"}]}`)
+	writeFile(t, dir, "plugins/p/skills/review/SKILL.md", skillMD("review"))
+	res, err := scaffold.Init(dir, scaffold.Options{CI: "gitlab"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Lstat(filepath.Join(dir, ".gitlab-ci.yml")); err == nil {
+		t.Error("conversion must not write a CI file")
+	}
+	if notice := strings.Join(res.Notices, "\n"); !strings.Contains(notice, "--ci") || !strings.Contains(notice, "skillcrew.yoandev.co/docs/guides/ci/") {
+		t.Errorf("notices = %v, want one saying --ci only applies to new registries", res.Notices)
 	}
 }

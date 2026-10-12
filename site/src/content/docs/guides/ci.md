@@ -7,9 +7,19 @@ order: 5
 
 `skillcrew validate` checks a registry: skills, governance, plugin layout and name collisions. Errors make it exit with a non-zero status, which fails the pull request.
 
-## The generated workflow
+## The generated configuration
 
-`skillcrew registry init` writes `.github/workflows/validate.yml` in new registries:
+`skillcrew registry init` writes a CI configuration in new registries. Choose it with `--ci`:
+
+| `--ci` | File |
+|---|---|
+| `github` (default) | `.github/workflows/validate.yml` |
+| `gitlab` | `.gitlab-ci.yml` |
+| `none` | no file |
+
+Converting an existing Claude Code marketplace writes no CI file: copy the configuration below.
+
+### GitHub Actions
 
 ```yaml
 name: Validate skills
@@ -41,6 +51,26 @@ Make the `validate` job a required status check in your branch protection rules.
 > [!NOTE]
 > Keep `fetch-depth: 0`. In a shallow clone, `validate` cannot check that pinned tags and commits exist, and says so.
 
+### GitLab CI
+
+With `--ci gitlab`, `skillcrew registry init` writes `.gitlab-ci.yml`:
+
+```yaml
+validate:
+  image: golang:1.27@sha256:e432b43af23a9328d56a7c499be0476810aa344acbcf65fc7c455d4ff5a40602
+  variables:
+    GIT_DEPTH: "0" # tags and history, to check pinned skills
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  script:
+    - go run github.com/yoanbernabeu/skillcrew/cmd/skillcrew@latest validate
+```
+
+The job runs on every merge request and on the default branch. In **Settings > Merge requests**, turn on **Pipelines must succeed** so a merge request cannot be merged while `validate` fails.
+
+The image is pinned by digest, as the GitHub actions are pinned by commit SHA; [Renovate](https://docs.renovatebot.com/) can keep it up to date. Keep `GIT_DEPTH: "0"` for the same reason as `fetch-depth: 0` above, and keep an image that ships `git`: `validate` needs it to check pins.
+
 ## What validate checks
 
 - Every skill id in `skillcrew.yaml` exists under `plugins/`.
@@ -63,4 +93,4 @@ skillcrew validate path/to/registry
 skillcrew validate --json
 ```
 
-Install the binary with the [install script](/docs/getting-started/install/#install-script) or run it with `go run`, as in the workflow above.
+Install the binary with the [install script](/docs/getting-started/install/#install-script) or run it with `go run`, as in the configurations above.

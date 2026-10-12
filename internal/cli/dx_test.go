@@ -489,3 +489,16 @@ func TestInitStoresAbsoluteLocalPaths(t *testing.T) {
 	e.now = e.now.Add(time.Hour)
 	e.mustRun("sync")
 }
+
+func TestRegistryInitCI(t *testing.T) {
+	e := newEnv(t)
+	dir := filepath.Join(t.TempDir(), "acme-skills")
+	out := e.mustRun("registry", "init", dir, "--ci", "gitlab")
+	if !strings.Contains(out, "+ .gitlab-ci.yml") || strings.Contains(out, ".github") {
+		t.Fatalf("output:\n%s", out)
+	}
+	out, err := e.run("registry", "init", t.TempDir(), "--ci", "jenkins")
+	if err == nil || !strings.Contains(out+err.Error(), "gitlab") {
+		t.Fatalf("an unknown CI must be refused, got %v\n%s", err, out)
+	}
+}

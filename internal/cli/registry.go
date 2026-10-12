@@ -136,7 +136,7 @@ func (a *App) registryCommand() *cobra.Command {
 		Long: "In a Claude Code marketplace repository, generate skillcrew.yaml listing every\n" +
 			"skill as available (colliding names get an install_as alias, invalid skills are\n" +
 			"blocked) and report what \"skillcrew validate\" finds. Anywhere else, create a new\n" +
-			"registry with an example skill.",
+			"registry with an example skill and a CI configuration (--ci).",
 		Args: usage(cobra.MaximumNArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			dir := "."
@@ -181,6 +181,7 @@ func (a *App) registryCommand() *cobra.Command {
 	initCmd.Flags().StringVar(&opts.Org, "org", "", "organization name")
 	initCmd.Flags().StringVar(&opts.Owner, "owner", "", "marketplace owner name (new registries)")
 	initCmd.Flags().BoolVar(&opts.Force, "force", false, "overwrite an existing skillcrew.yaml")
+	initCmd.Flags().StringVar(&opts.CI, "ci", "", "CI configuration for new registries: github (default), gitlab or none")
 
 	cmd := group(&cobra.Command{Use: "registry", Short: "Manage a registry repository (for administrators)"})
 	cmd.AddCommand(initCmd)

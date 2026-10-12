@@ -36,7 +36,7 @@ skills:
 - In a Git checkout, `skillcrew validate` checks that the tag or commit exists and that a `ref` is not only a branch.
 
 > [!WARNING]
-> In a shallow clone, `validate` cannot check pins, and says so. The generated CI workflow checks out the full history (`fetch-depth: 0`) for this reason.
+> In a shallow clone, `validate` cannot check pins, and says so. The generated CI checks out the full history (`fetch-depth: 0` on GitHub, `GIT_DEPTH: "0"` on GitLab) for this reason.
 
 > [!SECURITY]
 > Protect your tags. A pin to a tag is only as stable as the tag: if anyone can move or delete it, they can change the pinned skill.

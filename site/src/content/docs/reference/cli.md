@@ -248,13 +248,14 @@ Uninstall Skillcrew? [y/N]
 skillcrew registry init [dir] [flags]
 ```
 
-In a Claude Code marketplace repository, generate `skillcrew.yaml` listing every skill as `available` (colliding names get an `install_as` alias, invalid skills are blocked) and report what `skillcrew validate` finds. Anywhere else, create a new registry with an example skill, a CI workflow, a README for developers and an `AGENTS.md` (imported by `CLAUDE.md`) that tells AI agents how to change the registry. An existing `AGENTS.md` or `CLAUDE.md` is kept.
+In a Claude Code marketplace repository, generate `skillcrew.yaml` listing every skill as `available` (colliding names get an `install_as` alias, invalid skills are blocked) and report what `skillcrew validate` finds. Anywhere else, create a new registry with an example skill, a CI configuration (see `--ci`), a README for developers and an `AGENTS.md` (imported by `CLAUDE.md`) that tells AI agents how to change the registry. An existing `AGENTS.md` or `CLAUDE.md` is kept.
 
 | Flag | Effect |
 |---|---|
 | `--org <name>` | Organization name |
 | `--owner <name>` | Marketplace owner name (new registries) |
 | `--force` | Overwrite an existing `skillcrew.yaml` |
+| `--ci <system>` | CI configuration of a new registry: `github` (default, `.github/workflows/validate.yml`), `gitlab` (`.gitlab-ci.yml`) or `none` |
 
 ### skillcrew skill new
 
